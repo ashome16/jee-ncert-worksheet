@@ -223,11 +223,7 @@ export default function Home() {
   const grades = level === "FOUNDATION" ? ["8", "9", "10"] : ["11", "12"];
   const filteredChapters = useMemo(() => SYLLABUS.filter((item) => item.level === level && item.grade === grade && item.subject === subject), [level, grade, subject]);
   const selectedChapter = SYLLABUS.find((item) => item.id === chapterId);
-  const isFoundationShardChapter = level === "FOUNDATION" && grade === "8" && (
-    subject === "Mathematics" ||
-    (subject === "Physics" && chapterId === "g8_phy_01") ||
-    (subject === "Chemistry" && chapterId === "g8_che_01")
-  );
+  const isFoundationShardChapter = level === "FOUNDATION" && grade === "8";
   const options = level === "FOUNDATION" ? FOUNDATION_OPTIONS : JEE_OPTIONS;
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
