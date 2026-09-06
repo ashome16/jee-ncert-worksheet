@@ -1,11 +1,31 @@
-import type { ChapterId } from "./types";
-
-export const CHAPTERS: { id: ChapterId; title: string }[] = [
-  { id: "units-and-measurements", title: "Units and Measurements" },
-  { id: "motion-in-a-straight-line", title: "Motion in a Straight Line" },
-  { id: "laws-of-motion", title: "Laws of Motion" },
-];
-
-export function chapterTitle(id: ChapterId): string {
-  return CHAPTERS.find((c) => c.id === id)?.title ?? id;
+export interface ChapterMapping {
+  id: string;
+  title: string;
+  grade: "11" | "12";
+  subject: "Physics" | "Chemistry" | "Mathematics";
+  jeeWeightagePercent: number;
 }
+
+export const CHAPTERS_REGISTRY: ChapterMapping[] = [
+  { 
+    id: "p11_01", 
+    title: "Units and Measurements", 
+    grade: "11", 
+    subject: "Physics",
+    jeeWeightagePercent: 3.3 
+  },
+  { 
+    id: "p11_02", 
+    title: "Motion in a Straight Line", 
+    grade: "11", 
+    subject: "Physics",
+    jeeWeightagePercent: 6.6 
+  },
+  { 
+    id: "p11_03", 
+    title: "Laws of Motion", 
+    grade: "11", 
+    subject: "Physics",
+    jeeWeightagePercent: 10.0 
+  }
+];

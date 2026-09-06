@@ -1,85 +1,89 @@
-"use client";
+import React from "react";
+import { Worksheet } from "@/lib/types";
 
-import type { Worksheet } from "@/lib/types";
-
-export default function WorksheetPreview({
-  worksheet,
-}: {
+interface WorksheetPreviewProps {
   worksheet: Worksheet | null;
-}) {
-  if (!worksheet) {
+  worksheetId?: string;
+}
+
+export default function WorksheetPreview({ worksheet, worksheetId = "generated-sheet" }: WorksheetPreviewProps) {
+  if (!worksheet || !worksheet.questions) {
     return (
-      <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-10 text-center text-sm text-zinc-500">
-        Choose a chapter and generate a worksheet. Preview appears here. Use
-        Print to save as PDF.
+      <div className="border border-dashed p-12 text-center text-gray-400 rounded bg-gray-50">
+        Select parameters on the filter panel layout to render hardcopy sheets here.
       </div>
     );
   }
 
-  const totalMarks = worksheet.questions.reduce((s, q) => s + q.marks, 0);
+  const uniquePrinciples = Array.from(
+    new Map(worksheet.questions.map(q => [q.principle.id, q.principle])).values()
+  );
 
   return (
-    <article className="worksheet rounded-xl border border-zinc-200 bg-white p-8 shadow-sm print:border-0 print:shadow-none">
-      <header className="border-b border-zinc-300 pb-4">
-        <p className="text-xs uppercase tracking-widest text-zinc-500">
-          Practice worksheet · NCERT
+    <div className="space-y-6 print:p-0 p-6 bg-white shadow rounded border text-left">
+      <div className="border-b pb-4 bg-slate-50 p-4 rounded no-print">
+        <h3 className="font-bold text-sm text-slate-800 uppercase tracking-wider mb-1">
+          🧬 Dynamic Formula & Phenomenon Reference Index
+        </h3>
+        <p className="text-xs text-slate-500 mb-3">
+          This worksheet is systematically balanced based on entrance exam weightage mapping. Review these core principles tested in this sheet:
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-900">
-          {worksheet.title}
-        </h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Difficulty: {worksheet.filters.difficulty} ·{" "}
-          {worksheet.questions.length} questions · {totalMarks} marks
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-700">
-          <p>Name: ________________________</p>
-          <p>Date: ______________</p>
-        </div>
-      </header>
-
-      <ol className="mt-6 space-y-6">
-        {worksheet.questions.map((q, i) => (
-          <li key={q.id} className="text-sm leading-6">
-            <div className="flex justify-between gap-4">
-              <p>
-                <span className="font-semibold">{i + 1}.</span> {q.stem}{" "}
-                <span className="text-xs text-zinc-500">
-                  [{q.type} · {q.difficulty} · {q.marks} mark
-                  {q.marks > 1 ? "s" : ""}]
-                </span>
-              </p>
+        <div className="grid grid-cols-1 gap-2 text-xs">
+          {uniquePrinciples.map((p) => (
+            <div key={p.id} className="border bg-white p-2 rounded shadow-sm">
+              <div className="font-semibold text-slate-700">{p.name}</div>
+              <div className="text-slate-500 italic mt-0.5">Phenomenon: {p.phenomenon}</div>
+              <div className="mt-1 font-mono text-blue-600 bg-blue-50 p-1 rounded inline-block text-[10px]">
+                Governing Equation: {p.governingFormula}
+              </div>
             </div>
-            {q.options && (
-              <ul className="mt-2 grid gap-1 pl-5 sm:grid-cols-2">
-                {q.options.map((opt, idx) => (
-                  <li key={opt}>
-                    {String.fromCharCode(65 + idx)}. {opt}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {q.type === "FITB" || q.type === "NAT" ? (
-              <p className="mt-2 pl-5 text-zinc-400">Answer: ______________</p>
-            ) : null}
-          </li>
-        ))}
-      </ol>
+          ))}
+        </div>
+      </div>
 
-      {worksheet.filters.includeAnswerKey && (
-        <section className="answer-key mt-10 border-t border-zinc-300 pt-6">
-          <h2 className="text-lg font-semibold">Answer key</h2>
-          <ol className="mt-3 space-y-3 text-sm">
-            {worksheet.questions.map((q, i) => (
-              <li key={q.id}>
-                <span className="font-medium">
-                  {i + 1}. {q.answer}
-                </span>
-                <p className="text-zinc-600">{q.solution}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-    </article>
+      <div className="border-b pb-4 flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-bold">Physics Evaluation Worksheet</h1>
+          <p className="text-xs text-gray-500 font-mono mt-0.5">Sheet Identifier: {worksheetId}</p>
+        </div>
+        <div className="text-right text-sm">
+          <div><strong>Total Questions:</strong> {worksheet.totalQuestions}</div>
+          <div><strong>Max Marks:</strong> {worksheet.totalMarks}</div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {worksheet.questions.map((q, idx) => (
+          <div key={q.id} className="space-y-2 break-inside-avoid">
+            <div className="flex justify-between items-start">
+              <span className="font-medium text-gray-900">
+                Q{idx + 1}. <span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded ml-2 uppercase font-mono">{q.subtopic}</span>
+              </span>
+              <span className="text-xs text-gray-400 font-medium">[{q.marks} Marks]</span>
+            </div>
+            <p className="text-gray-800 text-sm whitespace-pre-wrap pl-6">{q.text}</p>
+
+            {q.type === "MCQ" && q.options && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-6 mt-1 text-sm text-gray-700">
+                {q.options.map((opt, oIdx) => (
+                  <div key={oIdx} className="border p-2 rounded bg-slate-50">
+                    <span className="font-semibold mr-1">{String.fromCharCode(65 + oIdx)}.</span> {opt}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="no-print pt-4 border-t flex justify-end">
+        <button 
+          onClick={() => window.print()} 
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm transition"
+        >
+          Print / Save PDF File
+        </button>
+      </div>
+    </div>
   );
 }

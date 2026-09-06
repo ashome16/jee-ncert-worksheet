@@ -1,49 +1,37 @@
 import { QUESTION_BANK } from "./bank";
-import { chapterTitle } from "./chapters";
-import type { GenerateFilters, Question, Worksheet } from "./types";
-
-function shuffle<T>(items: T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+import { GenerateFilters, Worksheet, QuestionType } from "./types";
 
 export function generateWorksheet(filters: GenerateFilters): Worksheet {
-  const types = filters.types.length ? filters.types : ["MCQ", "NAT", "FITB"];
+  let availableQuestions = QUESTION_BANK.filter(
+    (q) => q.chapterId === filters.chapterId
+  );
 
-  let pool: Question[] = QUESTION_BANK.filter((q) => {
-    if (q.chapter !== filters.chapter) return false;
-    if (!types.includes(q.type)) return false;
-    if (filters.difficulty !== "Mixed" && q.difficulty !== filters.difficulty) {
-      return false;
-    }
-    return true;
-  });
-
-  pool = shuffle(pool);
-
-  const count = Math.min(Math.max(filters.count, 1), 20);
-  let selected = pool.slice(0, count);
-
-  if (selected.length < count) {
-    const extra = shuffle(
-      QUESTION_BANK.filter(
-        (q) =>
-          q.chapter === filters.chapter &&
-          !selected.some((s) => s.id === q.id),
-      ),
+  if (filters.types && filters.types.length > 0) {
+    const selectedTypes = filters.types as QuestionType[];
+    availableQuestions = availableQuestions.filter((q) =>
+      selectedTypes.includes(q.type)
     );
-    selected = [...selected, ...extra].slice(0, count);
   }
 
+  if (filters.difficulty !== "Mixed") {
+    availableQuestions = availableQuestions.filter(
+      (q) => q.difficulty === filters.difficulty
+    );
+  }
+
+  const shuffled = [...availableQuestions];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const finalCount = Math.min(filters.count, shuffled.length, 20);
+  const selectedQuestions = shuffled.slice(0, finalCount);
+  const totalMarks = selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
+
   return {
-    id: crypto.randomUUID(),
-    title: `Class ${filters.grade} ${filters.subject} — ${chapterTitle(filters.chapter)}`,
-    generatedAt: new Date().toISOString(),
-    filters: { ...filters, types, count: selected.length },
-    questions: selected,
+    questions: selectedQuestions,
+    totalQuestions: selectedQuestions.length,
+    totalMarks,
   };
 }

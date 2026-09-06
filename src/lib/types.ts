@@ -1,44 +1,73 @@
-export type Subject = "Physics";
-export type Grade = "11";
-export type Difficulty = "Easy" | "Medium" | "Hard";
-export type QuestionType = "MCQ" | "NAT" | "FITB";
+export type QuestionType = 'MCQ' | 'NAT' | 'FITB';
+export type Difficulty = 'Easy' | 'Medium' | 'Hard' | 'Mixed';
+export type CognitiveDimension = 'KNOWLEDGE' | 'UNDERSTANDING' | 'APPLICATION';
 
-export type ChapterId =
-  | "units-and-measurements"
-  | "motion-in-a-straight-line"
-  | "laws-of-motion";
-
-export interface GenerateFilters {
-  subject: Subject;
-  grade: Grade;
-  chapter: ChapterId;
-  difficulty: Difficulty | "Mixed";
-  types: QuestionType[];
-  count: number;
-  includeAnswerKey: boolean;
+export interface PrincipleMetadata {
+  id: string;
+  name: string;
+  phenomenon: string;
+  governingFormula: string;
+  jeeWeightage: number;
 }
 
 export interface Question {
   id: string;
-  subject: Subject;
-  grade: Grade;
-  chapter: ChapterId;
-  chapterTitle: string;
-  topic: string;
+  chapterId: string;
+  subtopic: string;
+  principle: PrincipleMetadata;
+  cognitiveDimension: CognitiveDimension;
   type: QuestionType;
   difficulty: Difficulty;
-  stem: string;
+  text: string;
   options?: string[];
-  answer: string;
+  correctAnswer: string;
   solution: string;
   marks: number;
-  verified: boolean;
 }
 
 export interface Worksheet {
-  id: string;
-  title: string;
-  generatedAt: string;
-  filters: GenerateFilters;
   questions: Question[];
+  totalQuestions: number;
+  totalMarks: number;
+}
+
+export interface GenerateFilters {
+  subject: string;
+  grade: string;
+  chapterId: string;
+  difficulty: Difficulty;
+  types: QuestionType[];
+  count: number;
+}
+
+export interface MasterAnswerKey {
+  worksheetId: string;
+  generatedAt: string;
+  chapterId: string;
+  solutions: {
+    [questionId: string]: {
+      correctAnswer: string;
+      marks: number;
+      type: QuestionType;
+    };
+  };
+}
+
+export interface StudentSubmissionReport {
+  submissionId: string;
+  worksheetId: string;
+  chapterId: string;
+  submittedAt: string;
+  totalQuestions: number;
+  scoreObtained: number;
+  maxPossibleMarks: number;
+  accuracyPercentage: number;
+  responses: {
+    questionId: string;
+    questionText: string;
+    studentAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+    marksAwarded: number;
+  }[];
 }
