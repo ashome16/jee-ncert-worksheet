@@ -1,0 +1,12 @@
+[
+  { "id": "found.math.8.cq.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "percent-of" },
+  { "id": "found.math.8.cq.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "percent-of" },
+  { "id": "found.math.8.cq.q03", "type": "MCQ", "difficulty": "L2", "subtopic": "percent-change" },
+  { "id": "found.math.8.cq.q04", "type": "MCQ", "difficulty": "L2", "subtopic": "percent-change" },
+  { "id": "found.math.8.cq.q05", "type": "MCQ", "difficulty": "L2", "subtopic": "profit-loss" },
+  { "id": "found.math.8.cq.q06", "type": "MCQ", "difficulty": "L2", "subtopic": "profit-loss" },
+  { "id": "found.math.8.cq.q07", "type": "MCQ", "difficulty": "L2", "subtopic": "discount" },
+  { "id": "found.math.8.cq.q08", "type": "MCQ", "difficulty": "L1", "subtopic": "simple-interest" },
+  { "id": "found.math.8.cq.q09", "type": "NAT", "difficulty": "L1", "subtopic": "simple-interest" },
+  { "id": "found.math.8.cq.q10", "type": "NAT", "difficulty": "L2", "subtopic": "compound-interest" }
+]

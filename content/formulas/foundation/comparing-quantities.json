@@ -1,0 +1,26 @@
+[
+  {
+    "id": "found.math.8.cq.percent-of",
+    "name": "Percentage of a Quantity",
+    "latex": "\\text{Percent of } N = \\frac{P}{100} \\times N",
+    "vars": { "P": "percentage value", "N": "base quantity" }
+  },
+  {
+    "id": "found.math.8.cq.profit-loss",
+    "name": "Profit and Loss Percentage",
+    "latex": "\\text{Profit/Loss \\%} = \\frac{SP - CP}{CP} \\times 100",
+    "vars": { "SP": "selling price", "CP": "cost price" }
+  },
+  {
+    "id": "found.math.8.cq.simple-interest",
+    "name": "Simple Interest",
+    "latex": "SI = \\frac{P \\times R \\times T}{100}",
+    "vars": { "P": "principal", "R": "annual rate percent", "T": "time in years" }
+  },
+  {
+    "id": "found.math.8.cq.compound-interest",
+    "name": "Compound Interest (Amount)",
+    "latex": "A = P \\left(1 + \\frac{R}{100}\\right)^T",
+    "vars": { "P": "principal", "R": "annual rate percent", "T": "time in years", "A": "amount after interest" }
+  }
+]

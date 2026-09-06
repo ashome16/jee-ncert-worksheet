@@ -1,0 +1,12 @@
+[
+  { "id": "found.math.8.lin.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "solve-linear-equation" },
+  { "id": "found.math.8.lin.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "solve-linear-equation" },
+  { "id": "found.math.8.lin.q03", "type": "MCQ", "difficulty": "L1", "subtopic": "solve-linear-equation" },
+  { "id": "found.math.8.lin.q04", "type": "MCQ", "difficulty": "L2", "subtopic": "fraction-coefficients" },
+  { "id": "found.math.8.lin.q05", "type": "MCQ", "difficulty": "L2", "subtopic": "fraction-coefficients" },
+  { "id": "found.math.8.lin.q06", "type": "MCQ", "difficulty": "L2", "subtopic": "age-word-problem" },
+  { "id": "found.math.8.lin.q07", "type": "MCQ", "difficulty": "L2", "subtopic": "money-word-problem" },
+  { "id": "found.math.8.lin.q08", "type": "MCQ", "difficulty": "L1", "subtopic": "solve-linear-equation" },
+  { "id": "found.math.8.lin.q09", "type": "NAT", "difficulty": "L1", "subtopic": "solve-linear-equation" },
+  { "id": "found.math.8.lin.q10", "type": "NAT", "difficulty": "L2", "subtopic": "age-word-problem" }
+]
