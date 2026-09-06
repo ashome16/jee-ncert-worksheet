@@ -29,6 +29,7 @@ const FOUNDATION_SUBJECT_FOLDERS: Record<string, string> = {
   Mathematics: "math",
   Physics: "science",
   Chemistry: "science",
+  Biology: "science",
 };
 
 function loadFoundationChapter(subjectFolder: string, slug: string): Question[] {

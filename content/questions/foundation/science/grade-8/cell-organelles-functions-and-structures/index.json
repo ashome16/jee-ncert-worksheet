@@ -1,0 +1,10 @@
+[
+  { "id": "found.sci.8.cell.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "nucleus" },
+  { "id": "found.sci.8.cell.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "mitochondria" },
+  { "id": "found.sci.8.cell.q03", "type": "MCQ", "difficulty": "L1", "subtopic": "chloroplast" },
+  { "id": "found.sci.8.cell.q04", "type": "MCQ", "difficulty": "L1", "subtopic": "cell-wall-and-cell-membrane" },
+  { "id": "found.sci.8.cell.q05", "type": "MCQ", "difficulty": "L1", "subtopic": "cell-wall-and-cell-membrane" },
+  { "id": "found.sci.8.cell.q06", "type": "MCQ", "difficulty": "L1", "subtopic": "vacuole" },
+  { "id": "found.sci.8.cell.q07", "type": "NAT", "difficulty": "L1", "subtopic": "cytoplasm" },
+  { "id": "found.sci.8.cell.q08", "type": "NAT", "difficulty": "L1", "subtopic": "chloroplast" }
+]

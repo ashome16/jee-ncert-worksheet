@@ -62,3 +62,18 @@ subjects:
           - plastics-and-environment
           - four-r-principle
 
+  - grade: 8
+    subject: Biology
+    track: Foundation
+    contentFolder: science
+    chapters:
+      - slug: cell-organelles-functions-and-structures
+        title: Cell Organelles, Functions and Structures
+        subtopics:
+          - nucleus
+          - mitochondria
+          - chloroplast
+          - cell-wall-and-cell-membrane
+          - vacuole
+          - cytoplasm
+

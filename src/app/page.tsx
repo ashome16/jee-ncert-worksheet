@@ -265,9 +265,7 @@ export default function Home() {
       questionCount = selectedQuestions.length;
     }
     const nextDuration = isFoundationShardChapter
-      ? track === "CONCEPTUAL_QUIZ"
-        ? Math.max(5 * 60, questionCount * 90)
-        : questionCount * 2 * 60
+      ? Math.max(5 * 60, questionCount * 90)
       : track === "JEE_MOCK_TEST"
         ? 180 * 60
         : track === "CONCEPTUAL_QUIZ"
