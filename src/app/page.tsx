@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Atom, Calculator, FlaskConical, GraduationCap, Leaf, Rocket, Sprout } from "lucide-react";
+import { Atom, Calculator, Download, FlaskConical, GraduationCap, Leaf, Rocket, Sprout } from "lucide-react";
 import MathRenderer from "@/components/MathRenderer";
 
 type Level = "FOUNDATION" | "JEE";
@@ -17,6 +17,7 @@ type FormulaCard = { id: string; name: string; latex: string; vars: Record<strin
 type FoundationQuestion = { id: string; type: "MCQ" | "NAT"; stem: string; options?: string[]; answer: string; solution?: string; formulas?: FormulaCard[]; [key: string]: unknown };
 type ProfileTrack = "foundation" | "jee";
 type StudentProfile = { name: string; avatar?: string; track: ProfileTrack; grade: string };
+type SavedPaper = { id: string; chapterId: string; chapterSlug: string; chapterTitle: string; savedAt: string; score?: string };
 
 const SYLLABUS: Chapter[] = [
   { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
@@ -57,6 +58,7 @@ function toNumericValue(value: string): number {
 
 const MASTERY_STORAGE_KEY = "syllabus_mastery_map_v1";
 const PROFILE_STORAGE_KEY = "student-profile";
+const SAVED_PAPERS_STORAGE_KEY = "student-workspace-papers-v1";
 const FOUNDATION_GRADES = ["8", "9", "10"];
 const JEE_GRADES = ["11", "12"];
 const DEFAULT_PROFILE: StudentProfile = { name: "Sharvah", avatar: undefined, track: "foundation", grade: "8" };
@@ -131,6 +133,8 @@ export default function Home() {
   const [natAnswer, setNatAnswer] = useState("");
   const [foundationQuestions, setFoundationQuestions] = useState<FoundationQuestion[]>([]);
   const [foundationAnswers, setFoundationAnswers] = useState<Record<string, string>>({});
+  const [worksheetId, setWorksheetId] = useState<string | null>(null);
+  const [saveToast, setSaveToast] = useState(false);
   const [duration, setDuration] = useState(180 * 60);
   const [timeLeft, setTimeLeft] = useState(180 * 60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -185,6 +189,42 @@ export default function Home() {
     const nextProfile: StudentProfile = { ...profile, track: levelToTrack(level), grade };
     persistProfile(nextProfile);
     setProfileDraft(nextProfile);
+
+    if (!isFoundationShardChapter || !worksheetId || !selectedChapter?.slug) return;
+
+    const correctAnswers = submitted
+      ? foundationQuestions.filter((question) => isFoundationAnswerCorrect(question, foundationAnswers[question.id])).length
+      : undefined;
+    const savedPaper: SavedPaper = {
+      id: worksheetId,
+      chapterId,
+      chapterSlug: selectedChapter.slug,
+      chapterTitle: selectedChapter.title,
+      savedAt: new Date().toISOString(),
+      score: correctAnswers === undefined ? undefined : `${correctAnswers * 4}/${foundationQuestions.length * 4}`,
+    };
+    try {
+      const raw = window.localStorage.getItem(SAVED_PAPERS_STORAGE_KEY);
+      const savedPapers = raw ? JSON.parse(raw) : [];
+      const nextSavedPapers = Array.isArray(savedPapers)
+        ? [savedPaper, ...savedPapers.filter((paper: SavedPaper) => paper.id !== worksheetId)]
+        : [savedPaper];
+      window.localStorage.setItem(SAVED_PAPERS_STORAGE_KEY, JSON.stringify(nextSavedPapers));
+      setSaveToast(true);
+      window.setTimeout(() => setSaveToast(false), 2500);
+    } catch {
+      // ignore inaccessible storage
+    }
+  };
+
+  const downloadFoundationPdf = () => {
+    if (!isFoundationShardChapter || !worksheetId || !selectedChapter?.slug) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `foundation-grade8-${selectedChapter.slug}-${date}.pdf`;
+    const previousTitle = document.title;
+    document.title = filename;
+    window.addEventListener("afterprint", () => { document.title = previousTitle; }, { once: true });
+    window.print();
   };
 
   const handleAvatarUpload = (file: File | undefined) => {
@@ -243,7 +283,7 @@ export default function Home() {
     : Number(Boolean(mcqAnswer)) + Number(Boolean(natAnswer.trim()));
   const remainingCount = totalQuestions - answeredCount;
 
-  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); };
+  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); setWorksheetId(null); };
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
   const generateWorksheet = async () => {
@@ -262,6 +302,7 @@ export default function Home() {
         return;
       }
       setFoundationQuestions(selectedQuestions);
+      setWorksheetId(`foundation-grade8-${selectedChapter?.slug ?? chapterId}-${Date.now()}`);
       questionCount = selectedQuestions.length;
     }
     const nextDuration = isFoundationShardChapter
@@ -391,8 +432,8 @@ export default function Home() {
           </div></section>
 
 
-          <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: sharvah | Paper: {track}</p></div><div className={`flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
+          <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="worksheet space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: {capitalizeName(profile.name)} | Paper: {track}</p><p className="mt-1 text-xs text-zinc-500">Time allowed: {formatTime(duration)}</p></div><div className={`no-print flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase"><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">Answered: {answeredCount}</div><div className="rounded-lg bg-zinc-100 p-2 text-zinc-600">Questions: {totalQuestions}</div><div className="rounded-lg bg-amber-50 p-2 text-amber-700">Remaining: {remainingCount}</div></div>
             {isFoundationShardChapter ? foundationQuestions.map((question, index) => <div key={question.id} className="border-b pb-6"><span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>Question {index + 1}: {question.type} | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{question.stem}</h2>{question.type === "MCQ" ? <div className="mt-4 grid gap-3 md:grid-cols-2">{question.options?.map((option, optionIndex) => { const choice = String.fromCharCode(65 + optionIndex); return <label key={choice} className={`cursor-pointer rounded-xl border p-3 text-sm ${foundationAnswers[question.id] === choice ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name={question.id} value={choice} checked={foundationAnswers[question.id] === choice} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mr-2" />{choice}. {option}</label>; })}</div> : <input aria-label={`Numerical answer for question ${index + 1}`} type="text" inputMode="decimal" value={foundationAnswers[question.id] ?? ""} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" />}{submitted && <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs"><p className={isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "Correct" : "Incorrect"}</p><p className="mt-1"><strong>Answer:</strong> {question.answer}</p>{question.solution && <p className="mt-1"><strong>Solution:</strong> {question.solution}</p>}{question.formulas?.map((formula) => <div key={formula.id} className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-2"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div>{formula.example && <p className="mt-1 text-blue-700">Example: {formula.example}</p>}</div>)}</div>}</div>) : <><div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div><div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div></>}
             {submitted && isFoundationShardChapter && (() => {
@@ -417,11 +458,12 @@ export default function Home() {
               );
             })()}
             {submitted && !isFoundationShardChapter && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><h2 className="font-black text-emerald-800">Evaluation Complete</h2><p className="mt-1 text-emerald-700">MCQ: {mcqAnswer === answerKey.mcq ? "Correct" : "Incorrect"} | NAT: {natAnswer.trim() === answerKey.nat ? "Correct" : "Incorrect"}</p><details className="mt-3 text-xs"><summary className="cursor-pointer font-bold">View evaluation answer key</summary><p className="mt-2 font-mono">MCQ key: {answerKey.mcq} | NAT key: {answerKey.nat}</p></details></div>}
-            <div className="flex flex-wrap justify-between gap-3"><button type="button" onClick={resetAssessment} className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-600">Return to Filters</button>{!submitted && <button type="button" onClick={() => submitAssessment()} disabled={answeredCount === 0} className="rounded-xl bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40">Submit Assessment</button>}</div>
+            <div className="no-print flex flex-wrap justify-between gap-3"><button type="button" onClick={resetAssessment} className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-600">Return to Filters</button>{isFoundationShardChapter && <button type="button" onClick={downloadFoundationPdf} className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-bold text-blue-700 hover:bg-blue-100"><Download aria-hidden="true" className="h-4 w-4" />Download PDF</button>}{!submitted && <button type="button" onClick={() => submitAssessment()} disabled={answeredCount === 0} className="rounded-xl bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40">Submit Assessment</button>}</div>
           </div> : <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><div className="mt-4 flex justify-center"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm"><SubjectIcon subject={subject} className="h-5 w-5" /></div></div><h2 className="mt-3 text-lg font-black">Ready when you are</h2><p className="mt-1 text-sm text-zinc-500">Pick a chapter and launch a timed paper.</p><div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-bold text-zinc-600"><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? "Foundation" : "JEE Prep"}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? `Grade ${grade}` : `Class ${grade}`}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{subject === "Mathematics" ? "Maths" : subject}</span></div><p className="mt-4 text-xs text-zinc-400">{standbyQuestionCount} questions · {standbyDuration} for a {standbyTrackName}</p></div>}</section>
         </div>
-        <footer className="flex justify-between border-t pt-4 font-mono text-[10px] uppercase tracking-wider text-zinc-400"><span>NTA Interface Protocol v2.0</span><span>Elapsed session: {formatTime(elapsed)}</span></footer>
+        <footer className="no-print flex justify-between border-t pt-4 font-mono text-[10px] uppercase tracking-wider text-zinc-400"><span>NTA Interface Protocol v2.0</span><span>Elapsed session: {formatTime(elapsed)}</span></footer>
       </div>
+      {saveToast && <div role="status" className="no-print fixed bottom-6 right-6 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-lg">Saved to class</div>}
     </main>
   );
 }

@@ -25,4 +25,14 @@ body {
     border: none !important;
     padding: 0 !important;
   }
+
+  .worksheet input[type="radio"] {
+    appearance: none;
+    width: 0;
+    margin: 0;
+  }
+
+  .worksheet input[type="text"] {
+    min-height: 2rem;
+  }
 }
