@@ -80,7 +80,15 @@ export default function Home() {
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
   const generateWorksheet = async () => {
-    const nextDuration = track === "JEE_MOCK_TEST" ? 180 * 60 : track === "CONCEPTUAL_QUIZ" ? 15 * 60 : 45 * 60;
+    const nextDuration = level === "FOUNDATION"
+      ? track === "CONCEPTUAL_QUIZ"
+        ? Math.max(5 * 60, totalQuestions * 90)
+        : 10 * 2 * 60
+      : track === "JEE_MOCK_TEST"
+        ? 180 * 60
+        : track === "CONCEPTUAL_QUIZ"
+          ? 15 * 60
+          : 45 * 60;
     setFoundationEmpty(false);
     if (level === "FOUNDATION" && grade === "8" && subject === "Mathematics") {
       const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subject, chapterId: selectedChapter?.slug ?? chapterId, difficulty: "Mixed", types: ["MCQ", "NAT"], count: 10 }) });
