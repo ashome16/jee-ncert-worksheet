@@ -18,18 +18,18 @@ const SYLLABUS: Chapter[] = [
   { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
   { id: "g8_mat_02", slug: "linear-equations-in-one-variable", title: "Linear Equations in One Variable", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
   { id: "g8_mat_03", slug: "comparing-quantities", title: "Comparing Quantities", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
-  { id: "g8_phy_01", title: "Force, Friction, and Pressure Systems", grade: "8", subject: "Physics", level: "FOUNDATION" },
-  { id: "g8_che_01", title: "Synthetic Fibres, Biopolymers and Plastics", grade: "8", subject: "Chemistry", level: "FOUNDATION" },
-  { id: "g8_bio_01", title: "Cell Organelles, Functions and Structures", grade: "8", subject: "Biology", level: "FOUNDATION" },
-  { id: "g9_mat_01", title: "Polynomials, Roots and Coordinate Geometry", grade: "9", subject: "Mathematics", level: "FOUNDATION" },
-  { id: "g9_phy_01", title: "Gravitation, Laws of Motion and Kinematics", grade: "9", subject: "Physics", level: "FOUNDATION" },
-  { id: "g10_mat_01", title: "Quadratic Equations and Trigonometry", grade: "10", subject: "Mathematics", level: "FOUNDATION" },
-  { id: "g10_phy_01", title: "Light Reflection, Refraction and Human Eye", grade: "10", subject: "Physics", level: "FOUNDATION" },
-  { id: "g11_mat_01", title: "Permutations, Combinations and Probability", grade: "11", subject: "Mathematics", level: "JEE" },
-  { id: "g11_phy_01", title: "Units, Dimensions and Rotational Kinematics", grade: "11", subject: "Physics", level: "JEE" },
-  { id: "g12_mat_01", title: "Matrices, Determinants and Vector Calculus", grade: "12", subject: "Mathematics", level: "JEE" },
-  { id: "g12_phy_01", title: "Electrostatics, Gauss Law and Field Potentials", grade: "12", subject: "Physics", level: "JEE" },
-  { id: "g12_phy_02", title: "Current Electricity and Advanced Circuit Networks", grade: "12", subject: "Physics", level: "JEE" },
+  { id: "g8_phy_01", slug: "force-friction-and-pressure-systems", title: "Force, Friction, and Pressure Systems", grade: "8", subject: "Physics", level: "FOUNDATION" },
+  { id: "g8_che_01", slug: "synthetic-fibres-biopolymers-and-plastics", title: "Synthetic Fibres, Biopolymers and Plastics", grade: "8", subject: "Chemistry", level: "FOUNDATION" },
+  { id: "g8_bio_01", slug: "cell-organelles-functions-and-structures", title: "Cell Organelles, Functions and Structures", grade: "8", subject: "Biology", level: "FOUNDATION" },
+  { id: "g9_mat_01", slug: "polynomials-roots-and-coordinate-geometry", title: "Polynomials, Roots and Coordinate Geometry", grade: "9", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g9_phy_01", slug: "gravitation-laws-of-motion-and-kinematics", title: "Gravitation, Laws of Motion and Kinematics", grade: "9", subject: "Physics", level: "FOUNDATION" },
+  { id: "g10_mat_01", slug: "quadratic-equations-and-trigonometry", title: "Quadratic Equations and Trigonometry", grade: "10", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g10_phy_01", slug: "light-reflection-refraction-and-human-eye", title: "Light Reflection, Refraction and Human Eye", grade: "10", subject: "Physics", level: "FOUNDATION" },
+  { id: "g11_mat_01", slug: "permutations-combinations-and-probability", title: "Permutations, Combinations and Probability", grade: "11", subject: "Mathematics", level: "JEE" },
+  { id: "g11_phy_01", slug: "units-dimensions-and-rotational-kinematics", title: "Units, Dimensions and Rotational Kinematics", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g12_mat_01", slug: "matrices-determinants-and-vector-calculus", title: "Matrices, Determinants and Vector Calculus", grade: "12", subject: "Mathematics", level: "JEE" },
+  { id: "g12_phy_01", slug: "electrostatics-gauss-law-and-field-potentials", title: "Electrostatics, Gauss Law and Field Potentials", grade: "12", subject: "Physics", level: "JEE" },
+  { id: "g12_phy_02", slug: "current-electricity-and-advanced-circuit-networks", title: "Current Electricity and Advanced Circuit Networks", grade: "12", subject: "Physics", level: "JEE" },
 ];
 
 const SUBJECT_ICONS: Record<Subject, string> = { Mathematics: "[M]", Physics: "[P]", Chemistry: "[C]", Biology: "[B]" };
@@ -52,6 +52,27 @@ function toNumericValue(value: string): number {
   if (fractionMatch) return Number(fractionMatch[1]) / Number(fractionMatch[2]);
   return Number(trimmed);
 }
+
+const MASTERY_STORAGE_KEY = "syllabus_mastery_map_v1";
+
+function slugify(text: string): string {
+  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
+}
+
+// Composite key scopes mastery to the active track + grade + subject + chapter, e.g. foundation|8|mathematics|rational-numbers-and-integers
+function masteryKey(levelValue: Level, gradeValue: string, subjectValue: Subject, slug: string): string {
+  return `${levelValue.toLowerCase()}|${gradeValue}|${subjectValue.toLowerCase()}|${slug}`;
+}
+
+function chapterMasteryKey(chapter: Chapter | undefined, fallbackId: string): string {
+  if (!chapter) return fallbackId;
+  return masteryKey(chapter.level, chapter.grade, chapter.subject, chapter.slug ?? slugify(chapter.title));
+}
+
+const DEFAULT_MASTERY: Record<string, number> = {
+  [masteryKey("JEE", "12", "Physics", "electrostatics-gauss-law-and-field-potentials")]: 100,
+  [masteryKey("JEE", "12", "Physics", "current-electricity-and-advanced-circuit-networks")]: 45,
+};
 
 function isFoundationAnswerCorrect(question: FoundationQuestion, givenAnswer: string | undefined): boolean {
   const given = (givenAnswer ?? "").trim();
@@ -85,7 +106,28 @@ export default function Home() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef<number | null>(null);
   const [attempts, setAttempts] = useState<AttemptRecord[]>(INITIAL_ATTEMPTS);
-  const [mastery, setMastery] = useState<Record<string, number>>({ g12_phy_01: 100, g12_phy_02: 45 });
+  const [mastery, setMastery] = useState<Record<string, number>>(DEFAULT_MASTERY);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(MASTERY_STORAGE_KEY);
+      if (raw) setMastery(JSON.parse(raw));
+    } catch {
+      // ignore malformed or inaccessible storage
+    }
+  }, []);
+
+  const updateMastery = (key: string, value: number) => {
+    setMastery((current) => {
+      const next = { ...current, [key]: value };
+      try {
+        window.localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore inaccessible storage
+      }
+      return next;
+    });
+  };
 
   const grades = level === "FOUNDATION" ? ["8", "9", "10"] : ["11", "12"];
   const filteredChapters = useMemo(() => SYLLABUS.filter((item) => item.level === level && item.grade === grade && item.subject === subject), [level, grade, subject]);
@@ -140,7 +182,7 @@ export default function Home() {
       const score = correctAnswers * 4;
       const record: AttemptRecord = { timestamp: "Just now", topicTitle: selectedChapter?.title ?? "Multi-topic session", trackType: "Conceptual quiz", difficulty, score: `${score}/${maxScore} Marks`, accuracy: foundationQuestions.length ? (correctAnswers / foundationQuestions.length) * 100 : 0, cognitiveAlert: autoSubmitted || timeLeft === 0 ? "Auto-submitted: time limit expired before manual confirmation." : score === maxScore ? "System evaluation finalized successfully." : "Review the shard-backed answer key and repeat focused calculation drills." };
       setAttempts((history) => [record, ...history]);
-      setMastery((current) => ({ ...current, [chapterId]: record.accuracy }));
+      updateMastery(chapterMasteryKey(selectedChapter, chapterId), record.accuracy);
       setSubmitted(true);
       return;
     }
@@ -149,7 +191,7 @@ export default function Home() {
     const score = (mcqCorrect ? 4 : 0) + (natCorrect ? 4 : 0);
     const record: AttemptRecord = { timestamp: "Just now", topicTitle: selectedChapter?.title ?? "Multi-topic session", trackType: track === "JEE_MOCK_TEST" ? "Full-Pattern JEE Mock Test" : track === "CONCEPTUAL_QUIZ" ? "Conceptual quiz" : "Chapter practice", difficulty, score: `${score}/8 Marks`, accuracy: score * 12.5, cognitiveAlert: autoSubmitted || timeLeft === 0 ? "Auto-submitted: time limit expired before manual confirmation." : score === 8 ? "System evaluation finalized successfully." : "Review the response vector and repeat two focused calculation drills." };
     setAttempts((history) => [record, ...history]);
-    setMastery((current) => ({ ...current, [chapterId]: score === 8 ? 100 : 65 }));
+    updateMastery(chapterMasteryKey(selectedChapter, chapterId), score === 8 ? 100 : 65);
     setSubmitted(true);
   };
 
@@ -179,7 +221,7 @@ export default function Home() {
             <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">Open JoSAA Seat Predictor</Link>
           </div>
           <div className="flex gap-4 border-b text-xs font-bold uppercase tracking-wider text-zinc-400"><button type="button" onClick={() => setProfileTab("HEATMAP")} className={`border-b-2 pb-2 ${profileTab === "HEATMAP" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Syllabus Performance Map</button><button type="button" onClick={() => setProfileTab("REPORTS")} className={`border-b-2 pb-2 ${profileTab === "REPORTS" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Activity and Diagnostic Reports</button></div>
-          {profileTab === "HEATMAP" ? <div className="space-y-2">{filteredChapters.map((item) => { const score = mastery[item.id] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span>{SUBJECT_ICONS[item.subject]} {item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
+          {profileTab === "HEATMAP" ? <div className="space-y-2">{filteredChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span>{SUBJECT_ICONS[item.subject]} {item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-3">
