@@ -210,7 +210,7 @@ export default function Home() {
 
   const updateMastery = (key: string, value: number) => {
     setMastery((current) => {
-      const next = { ...current, [key]: value };
+      const next = { ...current, [key]: Math.max(current[key] ?? 0, value) };
       try {
         window.localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(next));
       } catch {
