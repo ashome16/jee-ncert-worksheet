@@ -33,7 +33,6 @@ const SYLLABUS: Chapter[] = [
 ];
 
 const SUBJECT_ICONS: Record<Subject, string> = { Mathematics: "[M]", Physics: "[P]", Chemistry: "[C]", Biology: "[B]" };
-const AVATARS = ["Student", "Scholar", "Robot", "Rocket", "Idea", "Focus"];
 const FOUNDATION_OPTIONS = ["A. x = -8", "B. x = 8", "C. x = -1", "D. x = 2"];
 const JEE_OPTIONS = ["A. 2.4 meters", "B. 4.8 meters", "C. 1.2 meters", "D. 3.6 meters"];
 const ANSWER_KEYS: Record<Level, AnswerKey> = { FOUNDATION: { mcq: "B. x = 8", nat: "50" }, JEE: { mcq: "A. 2.4 meters", nat: "50" } };
@@ -86,8 +85,6 @@ function isFoundationAnswerCorrect(question: FoundationQuestion, givenAnswer: st
 
 export default function Home() {
   const [profileTab, setProfileTab] = useState<ProfileTab>("HEATMAP");
-  const [avatar, setAvatar] = useState(AVATARS[0]);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [level, setLevel] = useState<Level>("JEE");
   const [grade, setGrade] = useState("12");
   const [subject, setSubject] = useState<Subject>("Physics");
@@ -213,10 +210,12 @@ export default function Home() {
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="relative space-y-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col items-start justify-between gap-4 border-b pb-4 md:flex-row md:items-center">
-            <div className="relative flex min-w-[320px] items-center gap-3 rounded-xl bg-zinc-950 p-3.5 text-white">
-              <button type="button" onClick={() => setAvatarPickerOpen((open) => !open)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 px-2 text-[10px] font-black">{avatar}</button>
-              {avatarPickerOpen && <div className="absolute left-0 top-14 z-50 flex gap-1 rounded-xl border bg-white p-2 shadow-xl">{AVATARS.map((item) => <button key={item} type="button" onClick={() => { setAvatar(item); setAvatarPickerOpen(false); }} className="rounded-lg px-2 py-1 text-[10px] font-bold text-zinc-700 hover:bg-zinc-100">{item}</button>)}</div>}
-              <div><div className="text-sm font-extrabold">Account Workspace: <span className="text-blue-400">sharvah</span></div><div className="mt-1 font-mono text-[10px] font-bold text-zinc-400">Active Tier: {level === "FOUNDATION" ? "Foundation Grades 8-10" : "JEE Engine Classes 11-12"}</div></div>
+            <div className="flex min-w-[320px] items-center gap-3 rounded-xl bg-zinc-950 p-3 text-white">
+              <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-400 text-sm font-black text-white">S</div>
+              <div>
+                <div className="text-sm font-extrabold">Sharvah</div>
+                <div className="mt-0.5 text-[11px] font-semibold text-zinc-300">{level === "FOUNDATION" ? "Foundation · Grades 8–10" : "JEE Prep · Classes 11–12"}</div>
+              </div>
             </div>
             <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">Open JoSAA Seat Predictor</Link>
           </div>
