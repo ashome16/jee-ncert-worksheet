@@ -11,6 +11,7 @@ type ExamTrack = "JEE_MOCK_TEST" | "CONCEPTUAL_QUIZ" | "CHAPTER_PRACTICE";
 type Chapter = { id: string; slug?: string; title: string; grade: string; subject: Subject; level: Level };
 type AttemptRecord = { timestamp: string; topicTitle: string; trackType: string; difficulty: string; score: string; accuracy: number; cognitiveAlert: string };
 type AnswerKey = { mcq: string; nat: string };
+type FoundationQuestion = { id: string; type: "MCQ" | "NAT"; stem: string; options?: string[]; answer: string; solution?: string; [key: string]: unknown };
 
 const SYLLABUS: Chapter[] = [
   { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
@@ -59,6 +60,8 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [mcqAnswer, setMcqAnswer] = useState("");
   const [natAnswer, setNatAnswer] = useState("");
+  const [foundationQuestions, setFoundationQuestions] = useState<FoundationQuestion[]>([]);
+  const [foundationAnswers, setFoundationAnswers] = useState<Record<string, string>>({});
   const [duration, setDuration] = useState(180 * 60);
   const [timeLeft, setTimeLeft] = useState(180 * 60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -69,40 +72,60 @@ export default function Home() {
   const grades = level === "FOUNDATION" ? ["8", "9", "10"] : ["11", "12"];
   const filteredChapters = useMemo(() => SYLLABUS.filter((item) => item.level === level && item.grade === grade && item.subject === subject), [level, grade, subject]);
   const selectedChapter = SYLLABUS.find((item) => item.id === chapterId);
+  const isFoundationMathematics = level === "FOUNDATION" && grade === "8" && subject === "Mathematics";
   const options = level === "FOUNDATION" ? FOUNDATION_OPTIONS : JEE_OPTIONS;
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
-  const totalQuestions = 2;
-  const answeredCount = Number(Boolean(mcqAnswer)) + Number(Boolean(natAnswer.trim()));
+  const totalQuestions = isFoundationMathematics && foundationQuestions.length > 0 ? foundationQuestions.length : 2;
+  const answeredCount = isFoundationMathematics
+    ? Object.values(foundationAnswers).filter((answer) => answer.trim()).length
+    : Number(Boolean(mcqAnswer)) + Number(Boolean(natAnswer.trim()));
   const remainingCount = totalQuestions - answeredCount;
 
-  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); };
+  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); };
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
   const generateWorksheet = async () => {
-    const nextDuration = level === "FOUNDATION"
+    setFoundationEmpty(false);
+    setFoundationQuestions([]);
+    setFoundationAnswers({});
+    let questionCount = 2;
+    if (isFoundationMathematics) {
+      const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subject, chapterId: selectedChapter?.slug ?? chapterId, difficulty: "Mixed", types: ["MCQ", "NAT"], count: 10 }) });
+      const result = await response.json();
+      const shardQuestions = (result.worksheet?.questions ?? []) as FoundationQuestion[];
+      const selectedQuestions = track === "CONCEPTUAL_QUIZ" ? shardQuestions.slice(0, 8) : shardQuestions;
+      if (!selectedQuestions.length) {
+        setFoundationEmpty(true);
+        setWorksheetOpen(true);
+        return;
+      }
+      setFoundationQuestions(selectedQuestions);
+      questionCount = selectedQuestions.length;
+    }
+    const nextDuration = isFoundationMathematics
       ? track === "CONCEPTUAL_QUIZ"
-        ? Math.max(5 * 60, totalQuestions * 90)
-        : 10 * 2 * 60
+        ? Math.max(5 * 60, questionCount * 90)
+        : questionCount * 2 * 60
       : track === "JEE_MOCK_TEST"
         ? 180 * 60
         : track === "CONCEPTUAL_QUIZ"
           ? 15 * 60
           : 45 * 60;
-    setFoundationEmpty(false);
-    if (level === "FOUNDATION" && grade === "8" && subject === "Mathematics") {
-      const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subject, chapterId: selectedChapter?.slug ?? chapterId, difficulty: "Mixed", types: ["MCQ", "NAT"], count: 10 }) });
-      const result = await response.json();
-      if (!result.worksheet?.questions?.length) {
-        setFoundationEmpty(true);
-        setWorksheetOpen(true);
-        return;
-      }
-    }
     deadlineRef.current = Date.now() + nextDuration * 1000; setDuration(nextDuration); setTimeLeft(nextDuration); setMcqAnswer(""); setNatAnswer(""); setSubmitted(false); setWorksheetOpen(true);
   };
   const submitAssessment = (autoSubmitted = false) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (isFoundationMathematics) {
+      const correctAnswers = foundationQuestions.filter((question) => foundationAnswers[question.id]?.trim() === question.answer.trim()).length;
+      const maxScore = foundationQuestions.length * 4;
+      const score = correctAnswers * 4;
+      const record: AttemptRecord = { timestamp: "Just now", topicTitle: selectedChapter?.title ?? "Multi-topic session", trackType: "Conceptual quiz", difficulty, score: `${score}/${maxScore} Marks`, accuracy: foundationQuestions.length ? (correctAnswers / foundationQuestions.length) * 100 : 0, cognitiveAlert: autoSubmitted || timeLeft === 0 ? "Auto-submitted: time limit expired before manual confirmation." : score === maxScore ? "System evaluation finalized successfully." : "Review the shard-backed answer key and repeat focused calculation drills." };
+      setAttempts((history) => [record, ...history]);
+      setMastery((current) => ({ ...current, [chapterId]: record.accuracy }));
+      setSubmitted(true);
+      return;
+    }
     const mcqCorrect = mcqAnswer === answerKey.mcq;
     const natCorrect = natAnswer.trim() === answerKey.nat;
     const score = (mcqCorrect ? 4 : 0) + (natCorrect ? 4 : 0);
@@ -155,8 +178,7 @@ export default function Home() {
           <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: sharvah | Paper: {track}</p></div><div className={`flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase"><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">Answered: {answeredCount}</div><div className="rounded-lg bg-zinc-100 p-2 text-zinc-600">Questions: {totalQuestions}</div><div className="rounded-lg bg-amber-50 p-2 text-amber-700">Remaining: {remainingCount}</div></div>
-            <div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{level === "FOUNDATION" ? "Solve 3x - 7 = 5x + 9." : "A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range."}</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div>
-            <div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div>
+            {isFoundationMathematics ? foundationQuestions.map((question, index) => <div key={question.id} className="border-b pb-6"><span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>Question {index + 1}: {question.type} | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{question.stem}</h2>{question.type === "MCQ" ? <div className="mt-4 grid gap-3 md:grid-cols-2">{question.options?.map((option, optionIndex) => { const choice = String.fromCharCode(65 + optionIndex); return <label key={choice} className={`cursor-pointer rounded-xl border p-3 text-sm ${foundationAnswers[question.id] === choice ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name={question.id} value={choice} checked={foundationAnswers[question.id] === choice} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mr-2" />{choice}. {option}</label>; })}</div> : <input aria-label={`Numerical answer for question ${index + 1}`} type="text" inputMode="decimal" value={foundationAnswers[question.id] ?? ""} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" />}{submitted && <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs"><p><strong>Answer:</strong> {question.answer}</p>{question.solution && <p className="mt-1"><strong>Solution:</strong> {question.solution}</p>}</div>}</div>) : <><div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div><div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div></>}
             {submitted && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><h2 className="font-black text-emerald-800">Evaluation Complete</h2><p className="mt-1 text-emerald-700">MCQ: {mcqAnswer === answerKey.mcq ? "Correct" : "Incorrect"} | NAT: {natAnswer.trim() === answerKey.nat ? "Correct" : "Incorrect"}</p><details className="mt-3 text-xs"><summary className="cursor-pointer font-bold">View evaluation answer key</summary><p className="mt-2 font-mono">MCQ key: {answerKey.mcq} | NAT key: {answerKey.nat}</p></details></div>}
             <div className="flex flex-wrap justify-between gap-3"><button type="button" onClick={resetAssessment} className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-600">Return to Filters</button>{!submitted && <button type="button" onClick={() => submitAssessment()} disabled={answeredCount === 0} className="rounded-xl bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40">Submit Assessment</button>}</div>
           </div> : <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">Configure your worksheet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">Choose a grade, subject, chapter, difficulty matrix, and assessment track to launch the timed paper.</p></div>}</section>
