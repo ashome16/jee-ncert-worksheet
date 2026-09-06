@@ -1,0 +1,10 @@
+[
+  { "id": "found.sci.8.sfpp.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "synthetic-fibres" },
+  { "id": "found.sci.8.sfpp.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "properties-and-uses" },
+  { "id": "found.sci.8.sfpp.q03", "type": "MCQ", "difficulty": "L1", "subtopic": "properties-and-uses" },
+  { "id": "found.sci.8.sfpp.q04", "type": "MCQ", "difficulty": "L1", "subtopic": "thermoplastics-and-thermosetting-plastics" },
+  { "id": "found.sci.8.sfpp.q05", "type": "MCQ", "difficulty": "L1", "subtopic": "thermoplastics-and-thermosetting-plastics" },
+  { "id": "found.sci.8.sfpp.q06", "type": "MCQ", "difficulty": "L1", "subtopic": "plastics-and-environment" },
+  { "id": "found.sci.8.sfpp.q07", "type": "NAT", "difficulty": "L1", "subtopic": "four-r-principle" },
+  { "id": "found.sci.8.sfpp.q08", "type": "NAT", "difficulty": "L1", "subtopic": "plastics-and-environment" }
+]

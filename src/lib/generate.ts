@@ -24,10 +24,11 @@ function loadFormulaCards(slug: string): FormulaCard[] {
   return JSON.parse(fs.readFileSync(formulaFile, "utf8"));
 }
 
-// Foundation Grade 8 content is sharded by subject folder: Mathematics -> math, Physics -> science.
+// Foundation Grade 8 content is sharded by subject folder: Mathematics -> math; sciences -> science.
 const FOUNDATION_SUBJECT_FOLDERS: Record<string, string> = {
   Mathematics: "math",
   Physics: "science",
+  Chemistry: "science",
 };
 
 function loadFoundationChapter(subjectFolder: string, slug: string): Question[] {

@@ -48,3 +48,17 @@ subjects:
           - pressure-force-area
           - liquid-pressure-depth
 
+  - grade: 8
+    subject: Chemistry
+    track: Foundation
+    contentFolder: science
+    chapters:
+      - slug: synthetic-fibres-biopolymers-and-plastics
+        title: Synthetic Fibres, Biopolymers and Plastics
+        subtopics:
+          - synthetic-fibres
+          - properties-and-uses
+          - thermoplastics-and-thermosetting-plastics
+          - plastics-and-environment
+          - four-r-principle
+
