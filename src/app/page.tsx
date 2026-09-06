@@ -13,6 +13,8 @@ type AttemptRecord = { timestamp: string; topicTitle: string; trackType: string;
 type AnswerKey = { mcq: string; nat: string };
 type FormulaCard = { id: string; name: string; latex: string; vars: Record<string, string>; example?: string };
 type FoundationQuestion = { id: string; type: "MCQ" | "NAT"; stem: string; options?: string[]; answer: string; solution?: string; formulas?: FormulaCard[]; [key: string]: unknown };
+type ProfileTrack = "foundation" | "jee";
+type StudentProfile = { name: string; avatar?: string; track: ProfileTrack; grade: string };
 
 const SYLLABUS: Chapter[] = [
   { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
@@ -53,6 +55,28 @@ function toNumericValue(value: string): number {
 }
 
 const MASTERY_STORAGE_KEY = "syllabus_mastery_map_v1";
+const PROFILE_STORAGE_KEY = "student-profile";
+const FOUNDATION_GRADES = ["8", "9", "10"];
+const JEE_GRADES = ["11", "12"];
+const DEFAULT_PROFILE: StudentProfile = { name: "Sharvah", avatar: undefined, track: "foundation", grade: "8" };
+
+function trackToLevel(track: ProfileTrack): Level {
+  return track === "foundation" ? "FOUNDATION" : "JEE";
+}
+
+function levelToTrack(level: Level): ProfileTrack {
+  return level === "FOUNDATION" ? "foundation" : "jee";
+}
+
+function capitalizeName(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase()).join(" ") || "Student";
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  return (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
+}
 
 function slugify(text: string): string {
   return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
@@ -104,6 +128,67 @@ export default function Home() {
   const deadlineRef = useRef<number | null>(null);
   const [attempts, setAttempts] = useState<AttemptRecord[]>(INITIAL_ATTEMPTS);
   const [mastery, setMastery] = useState<Record<string, number>>(DEFAULT_MASTERY);
+  const [profile, setProfile] = useState<StudentProfile>(DEFAULT_PROFILE);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [profileDraft, setProfileDraft] = useState<StudentProfile>(DEFAULT_PROFILE);
+
+  const applyProfileToWorkspace = (nextProfile: StudentProfile) => {
+    const nextLevel = trackToLevel(nextProfile.track);
+    const firstChapter = SYLLABUS.find((item) => item.level === nextLevel && item.grade === nextProfile.grade);
+    setLevel(nextLevel);
+    setGrade(nextProfile.grade);
+    setSubject(firstChapter?.subject ?? (nextLevel === "FOUNDATION" ? "Mathematics" : "Physics"));
+    setChapterId(firstChapter?.id ?? "");
+    setTrack(nextLevel === "FOUNDATION" ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST");
+  };
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+      const loaded = raw ? { ...DEFAULT_PROFILE, ...JSON.parse(raw) } : DEFAULT_PROFILE;
+      setProfile(loaded);
+      setProfileDraft(loaded);
+      applyProfileToWorkspace(loaded);
+    } catch {
+      // ignore malformed or inaccessible storage
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistProfile = (nextProfile: StudentProfile) => {
+    setProfile(nextProfile);
+    try {
+      window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+    } catch {
+      // ignore inaccessible storage
+    }
+  };
+
+  const saveProfileFromEditor = () => {
+    const cleanedDraft: StudentProfile = { ...profileDraft, name: profileDraft.name.trim() || DEFAULT_PROFILE.name };
+    persistProfile(cleanedDraft);
+    applyProfileToWorkspace(cleanedDraft);
+    resetAssessment();
+    setProfileEditorOpen(false);
+  };
+
+  const saveCurrentSelectionAsClass = () => {
+    const nextProfile: StudentProfile = { ...profile, track: levelToTrack(level), grade };
+    persistProfile(nextProfile);
+    setProfileDraft(nextProfile);
+  };
+
+  const handleAvatarUpload = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProfileDraft((current) => ({ ...current, avatar: String(reader.result) }));
+    reader.readAsDataURL(file);
+  };
+
+  const heatmapChapters = useMemo(
+    () => SYLLABUS.filter((item) => item.level === trackToLevel(profile.track) && item.grade === profile.grade),
+    [profile]
+  );
 
   useEffect(() => {
     try {
@@ -211,28 +296,83 @@ export default function Home() {
         <section className="relative space-y-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col items-start justify-between gap-4 border-b pb-4 md:flex-row md:items-center">
             <div className="flex min-w-[320px] items-center gap-3 rounded-xl bg-zinc-950 p-3 text-white">
-              <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-400 text-sm font-black text-white">S</div>
+              {profile.avatar ? (
+                <img src={profile.avatar} alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-400 text-sm font-black text-white">{getInitials(profile.name)}</div>
+              )}
               <div>
-                <div className="text-sm font-extrabold">Sharvah</div>
-                <div className="mt-0.5 text-[11px] font-semibold text-zinc-300">{level === "FOUNDATION" ? "Foundation · Grades 8–10" : "JEE Prep · Classes 11–12"}</div>
+                <div className="text-sm font-extrabold">{capitalizeName(profile.name)}</div>
+                <div className="mt-0.5 text-[11px] font-semibold text-zinc-300">{profile.track === "foundation" ? `Foundation · Grade ${profile.grade}` : `JEE Prep · Class ${profile.grade}`}</div>
               </div>
+              <button
+                type="button"
+                aria-label="Edit student profile"
+                onClick={() => { setProfileDraft(profile); setProfileEditorOpen((open) => !open); }}
+                className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-[11px] text-zinc-300 hover:text-white"
+              >
+                ✎
+              </button>
             </div>
             <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">Open JoSAA Seat Predictor</Link>
           </div>
+          {profileEditorOpen && (
+            <div className="space-y-3 rounded-xl border bg-zinc-50 p-4 text-xs">
+              <div className="flex items-center gap-3">
+                {profileDraft.avatar ? (
+                  <img src={profileDraft.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-sm font-black text-indigo-700">{getInitials(profileDraft.name)}</div>
+                )}
+                <div className="flex gap-2">
+                  <label className="cursor-pointer rounded-lg border bg-white px-3 py-1.5 font-bold text-zinc-700">
+                    Upload photo
+                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarUpload(event.target.files?.[0])} />
+                  </label>
+                  {profileDraft.avatar && <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, avatar: undefined }))} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Remove</button>}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="profile-name" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Name</label>
+                <input id="profile-name" type="text" value={profileDraft.name} onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))} className="w-full rounded-lg border p-2 text-sm font-medium" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Track</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, track: "foundation", grade: FOUNDATION_GRADES.includes(current.grade) ? current.grade : FOUNDATION_GRADES[0] }))} className={`rounded-lg border p-2 ${profileDraft.track === "foundation" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>Foundation</button>
+                    <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, track: "jee", grade: JEE_GRADES.includes(current.grade) ? current.grade : JEE_GRADES[0] }))} className={`rounded-lg border p-2 ${profileDraft.track === "jee" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>JEE</button>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="profile-grade" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Grade</label>
+                  <select id="profile-grade" value={profileDraft.grade} onChange={(event) => setProfileDraft((current) => ({ ...current, grade: event.target.value }))} className="w-full rounded-lg border p-2 text-sm">
+                    {(profileDraft.track === "foundation" ? FOUNDATION_GRADES : JEE_GRADES).map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setProfileEditorOpen(false)} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Cancel</button>
+                <button type="button" onClick={saveProfileFromEditor} className="rounded-lg bg-zinc-900 px-3 py-1.5 font-bold text-white">Save</button>
+              </div>
+            </div>
+          )}
           <div className="flex gap-4 border-b text-xs font-bold uppercase tracking-wider text-zinc-400"><button type="button" onClick={() => setProfileTab("HEATMAP")} className={`border-b-2 pb-2 ${profileTab === "HEATMAP" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Syllabus Performance Map</button><button type="button" onClick={() => setProfileTab("REPORTS")} className={`border-b-2 pb-2 ${profileTab === "REPORTS" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Activity and Diagnostic Reports</button></div>
-          {profileTab === "HEATMAP" ? <div className="space-y-2">{filteredChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span>{SUBJECT_ICONS[item.subject]} {item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
+          {profileTab === "HEATMAP" ? <div className="space-y-2">{heatmapChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span>{SUBJECT_ICONS[item.subject]} {item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-3">
           <section className="space-y-5 rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">Generate Worksheet</h2><div className="space-y-4 text-xs font-bold">
             <div><label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Preparation Level</label><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => changeLevel("FOUNDATION")} className={`rounded-xl border p-2.5 ${level === "FOUNDATION" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>Foundation</button><button type="button" onClick={() => changeLevel("JEE")} className={`rounded-xl border p-2.5 ${level === "JEE" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>JEE Prep</button></div></div>
             <div><label htmlFor="grade" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Target Grade</label><select id="grade" value={grade} onChange={(event) => changeFilters(event.target.value, subject)} className="w-full rounded-xl border p-2.5 text-sm">{grades.map((item) => <option key={item} value={item}>{level === "FOUNDATION" ? `Grade ${item}` : `Class ${item}`}</option>)}</select></div>
+            <button type="button" onClick={saveCurrentSelectionAsClass} className="w-full rounded-xl border border-dashed p-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800">Save as my class</button>
             <div><label htmlFor="subject" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Subject</label><select id="subject" value={subject} onChange={(event) => changeFilters(grade, event.target.value as Subject)} className="w-full rounded-xl border p-2.5 text-sm"><option>Mathematics</option><option>Physics</option><option>Chemistry</option>{level === "FOUNDATION" && <option>Biology</option>}</select></div>
             <div><label htmlFor="chapter" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Chapter</label><select id="chapter" value={chapterId} onChange={(event) => { setChapterId(event.target.value); resetAssessment(); }} className="w-full rounded-xl border p-2.5 text-sm">{filteredChapters.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
             <div><label htmlFor="difficulty" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Difficulty Matrix</label><select id="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="w-full rounded-xl border p-2.5 text-sm"><option>Easy</option><option>Medium</option><option>Hard</option><option>Mixed Matrix</option></select></div>
             <div><label htmlFor="track" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Assessment Track</label><select id="track" value={track} onChange={(event) => setTrack(event.target.value as ExamTrack)} className="w-full rounded-xl border p-2.5 text-sm"><option value="JEE_MOCK_TEST">Full-Pattern JEE Mock Test</option><option value="CONCEPTUAL_QUIZ">Conceptual Quiz</option><option value="CHAPTER_PRACTICE">Chapter Practice</option></select></div>
             <button type="button" onClick={generateWorksheet} className="w-full rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700">Generate NTA Worksheet</button>
           </div></section>
+
 
           <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: sharvah | Paper: {track}</p></div><div className={`flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
