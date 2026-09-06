@@ -1,5 +1,5 @@
 import { QUESTION_BANK } from "./bank";
-import { GenerateFilters, Worksheet, QuestionType } from "./types";
+import { GenerateFilters, Worksheet, Question, QuestionType } from "./types";
 import fs from "node:fs";
 import path from "node:path";
 
