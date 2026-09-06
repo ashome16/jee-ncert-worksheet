@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Atom, Calculator, FlaskConical, GraduationCap, Leaf, Rocket, Sprout } from "lucide-react";
 
 type Level = "FOUNDATION" | "JEE";
 type ProfileTab = "HEATMAP" | "REPORTS";
@@ -34,7 +35,6 @@ const SYLLABUS: Chapter[] = [
   { id: "g12_phy_02", slug: "current-electricity-and-advanced-circuit-networks", title: "Current Electricity and Advanced Circuit Networks", grade: "12", subject: "Physics", level: "JEE" },
 ];
 
-const SUBJECT_ICONS: Record<Subject, string> = { Mathematics: "[M]", Physics: "[P]", Chemistry: "[C]", Biology: "[B]" };
 const FOUNDATION_OPTIONS = ["A. x = -8", "B. x = 8", "C. x = -1", "D. x = 2"];
 const JEE_OPTIONS = ["A. 2.4 meters", "B. 4.8 meters", "C. 1.2 meters", "D. 3.6 meters"];
 const ANSWER_KEYS: Record<Level, AnswerKey> = { FOUNDATION: { mcq: "B. x = 8", nat: "50" }, JEE: { mcq: "A. 2.4 meters", nat: "50" } };
@@ -105,6 +105,14 @@ function isFoundationAnswerCorrect(question: FoundationQuestion, givenAnswer: st
   const correctValue = toNumericValue(question.answer);
   if (Number.isFinite(givenValue) && Number.isFinite(correctValue)) return givenValue === correctValue;
   return given.toLowerCase() === question.answer.trim().toLowerCase();
+}
+
+function SubjectIcon({ subject, className = "" }: { subject: Subject; className?: string }) {
+  const iconProps = { "aria-hidden": true, className: `shrink-0 ${className}` };
+  if (subject === "Mathematics") return <Calculator {...iconProps} />;
+  if (subject === "Physics") return <Atom {...iconProps} />;
+  if (subject === "Chemistry") return <FlaskConical {...iconProps} />;
+  return <Leaf {...iconProps} />;
 }
 
 export default function Home() {
@@ -218,6 +226,9 @@ export default function Home() {
   const options = level === "FOUNDATION" ? FOUNDATION_OPTIONS : JEE_OPTIONS;
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
+  const standbyQuestionCount = level === "FOUNDATION" ? 8 : 2;
+  const standbyDuration = level === "FOUNDATION" && track === "CONCEPTUAL_QUIZ" ? "about 12 minutes" : track === "JEE_MOCK_TEST" ? "about 3 hours" : "about 45 minutes";
+  const standbyTrackName = track === "CONCEPTUAL_QUIZ" ? "Conceptual Quiz" : track === "JEE_MOCK_TEST" ? "JEE Mock Test" : "Chapter Practice";
   const totalQuestions = isFoundationMathematics && foundationQuestions.length > 0 ? foundationQuestions.length : 2;
   const answeredCount = isFoundationMathematics
     ? Object.values(foundationAnswers).filter((answer) => answer.trim()).length
@@ -358,19 +369,19 @@ export default function Home() {
             </div>
           )}
           <div className="flex gap-4 border-b text-xs font-bold uppercase tracking-wider text-zinc-400"><button type="button" onClick={() => setProfileTab("HEATMAP")} className={`border-b-2 pb-2 ${profileTab === "HEATMAP" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Syllabus Performance Map</button><button type="button" onClick={() => setProfileTab("REPORTS")} className={`border-b-2 pb-2 ${profileTab === "REPORTS" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Activity and Diagnostic Reports</button></div>
-          {profileTab === "HEATMAP" ? <div className="space-y-2">{heatmapChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span>{SUBJECT_ICONS[item.subject]} {item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
+          {profileTab === "HEATMAP" ? <div className="space-y-2">{heatmapChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span className="flex items-center gap-2"><SubjectIcon subject={item.subject} className="h-4 w-4 text-zinc-500" />{item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-3">
           <section className="space-y-5 rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">Generate Worksheet</h2><div className="space-y-4 text-xs font-bold">
-            <div><label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Preparation Level</label><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => changeLevel("FOUNDATION")} className={`rounded-xl border p-2.5 ${level === "FOUNDATION" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>Foundation</button><button type="button" onClick={() => changeLevel("JEE")} className={`rounded-xl border p-2.5 ${level === "JEE" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>JEE Prep</button></div></div>
+            <div><label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Preparation Level</label><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => changeLevel("FOUNDATION")} className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 ${level === "FOUNDATION" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}><Sprout aria-hidden="true" className="h-3.5 w-3.5" />Foundation</button><button type="button" onClick={() => changeLevel("JEE")} className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 ${level === "JEE" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}><GraduationCap aria-hidden="true" className="h-3.5 w-3.5" />JEE Prep</button></div></div>
             <div><label htmlFor="grade" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Target Grade</label><select id="grade" value={grade} onChange={(event) => changeFilters(event.target.value, subject)} className="w-full rounded-xl border p-2.5 text-sm">{grades.map((item) => <option key={item} value={item}>{level === "FOUNDATION" ? `Grade ${item}` : `Class ${item}`}</option>)}</select></div>
             <button type="button" onClick={saveCurrentSelectionAsClass} className="w-full rounded-xl border border-dashed p-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800">Save as my class</button>
-            <div><label htmlFor="subject" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Subject</label><select id="subject" value={subject} onChange={(event) => changeFilters(grade, event.target.value as Subject)} className="w-full rounded-xl border p-2.5 text-sm"><option>Mathematics</option><option>Physics</option><option>Chemistry</option>{level === "FOUNDATION" && <option>Biology</option>}</select></div>
+            <div><label htmlFor="subject" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Subject</label><div className="flex items-center rounded-xl border bg-white pl-2.5"><SubjectIcon subject={subject} className="h-4 w-4 text-zinc-500" /><select id="subject" value={subject} onChange={(event) => changeFilters(grade, event.target.value as Subject)} className="w-full rounded-xl bg-transparent p-2.5 text-sm outline-none"><option>Mathematics</option><option>Physics</option><option>Chemistry</option>{level === "FOUNDATION" && <option>Biology</option>}</select></div></div>
             <div><label htmlFor="chapter" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Chapter</label><select id="chapter" value={chapterId} onChange={(event) => { setChapterId(event.target.value); resetAssessment(); }} className="w-full rounded-xl border p-2.5 text-sm">{filteredChapters.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
             <div><label htmlFor="difficulty" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Difficulty Matrix</label><select id="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="w-full rounded-xl border p-2.5 text-sm"><option>Easy</option><option>Medium</option><option>Hard</option><option>Mixed Matrix</option></select></div>
             <div><label htmlFor="track" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Assessment Track</label><select id="track" value={track} onChange={(event) => setTrack(event.target.value as ExamTrack)} className="w-full rounded-xl border p-2.5 text-sm"><option value="JEE_MOCK_TEST">Full-Pattern JEE Mock Test</option><option value="CONCEPTUAL_QUIZ">Conceptual Quiz</option><option value="CHAPTER_PRACTICE">Chapter Practice</option></select></div>
-            <button type="button" onClick={generateWorksheet} className="w-full rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700">Generate NTA Worksheet</button>
+            <button type="button" onClick={generateWorksheet} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"><Rocket aria-hidden="true" className="h-4 w-4" />Generate NTA Worksheet</button>
           </div></section>
 
 
@@ -401,7 +412,7 @@ export default function Home() {
             })()}
             {submitted && !isFoundationMathematics && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><h2 className="font-black text-emerald-800">Evaluation Complete</h2><p className="mt-1 text-emerald-700">MCQ: {mcqAnswer === answerKey.mcq ? "Correct" : "Incorrect"} | NAT: {natAnswer.trim() === answerKey.nat ? "Correct" : "Incorrect"}</p><details className="mt-3 text-xs"><summary className="cursor-pointer font-bold">View evaluation answer key</summary><p className="mt-2 font-mono">MCQ key: {answerKey.mcq} | NAT key: {answerKey.nat}</p></details></div>}
             <div className="flex flex-wrap justify-between gap-3"><button type="button" onClick={resetAssessment} className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-600">Return to Filters</button>{!submitted && <button type="button" onClick={() => submitAssessment()} disabled={answeredCount === 0} className="rounded-xl bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40">Submit Assessment</button>}</div>
-          </div> : <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">Configure your worksheet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">Choose a grade, subject, chapter, difficulty matrix, and assessment track to launch the timed paper.</p></div>}</section>
+          </div> : <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><div className="mt-4 flex justify-center"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm"><SubjectIcon subject={subject} className="h-5 w-5" /></div></div><h2 className="mt-3 text-lg font-black">Ready when you are</h2><p className="mt-1 text-sm text-zinc-500">Pick a chapter and launch a timed paper.</p><div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-bold text-zinc-600"><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? "Foundation" : "JEE Prep"}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? `Grade ${grade}` : `Class ${grade}`}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{subject === "Mathematics" ? "Maths" : subject}</span></div><p className="mt-4 text-xs text-zinc-400">{standbyQuestionCount} questions · {standbyDuration} for a {standbyTrackName}</p></div>}</section>
         </div>
         <footer className="flex justify-between border-t pt-4 font-mono text-[10px] uppercase tracking-wider text-zinc-400"><span>NTA Interface Protocol v2.0</span><span>Elapsed session: {formatTime(elapsed)}</span></footer>
       </div>
