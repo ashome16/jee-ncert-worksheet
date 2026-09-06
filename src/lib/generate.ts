@@ -3,6 +3,27 @@ import { GenerateFilters, Worksheet, Question, QuestionType } from "./types";
 import fs from "node:fs";
 import path from "node:path";
 
+interface FormulaCard {
+  id: string;
+  name: string;
+  latex: string;
+  vars: Record<string, string>;
+  example?: string;
+}
+
+function loadFormulaCards(slug: string): FormulaCard[] {
+  const formulaFile = path.join(
+    process.cwd(),
+    "content",
+    "formulas",
+    "foundation",
+    `${slug}.json`
+  );
+
+  if (!fs.existsSync(formulaFile)) return [];
+  return JSON.parse(fs.readFileSync(formulaFile, "utf8"));
+}
+
 function loadFoundationChapter(slug: string): Question[] {
   const chapterDirectory = path.join(
     process.cwd(),
@@ -20,9 +41,18 @@ function loadFoundationChapter(slug: string): Question[] {
     .filter((fileName) => /^items-\d+\.json$/.test(fileName))
     .sort();
 
+  const formulaCards = loadFormulaCards(slug);
+  const formulaById = new Map(formulaCards.map((card) => [card.id, card]));
+
   return itemFiles.flatMap((fileName) => {
     const file = JSON.parse(fs.readFileSync(path.join(chapterDirectory, fileName), "utf8"));
-    return Array.isArray(file) ? file : file.items ?? [];
+    const items = Array.isArray(file) ? file : file.items ?? [];
+    return items.map((item: { formulaIds?: string[] }) => ({
+      ...item,
+      formulas: (item.formulaIds ?? [])
+        .map((id: string) => formulaById.get(id))
+        .filter((card: FormulaCard | undefined): card is FormulaCard => Boolean(card)),
+    }));
   });
 }
 
