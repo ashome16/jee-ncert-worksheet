@@ -14,7 +14,8 @@
     "solution": "20% of 350 = (20/100) x 350 = 70.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q02",
@@ -31,7 +32,8 @@
     "solution": "60% of 45 = (60/100) x 45 = 27.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q03",
@@ -48,7 +50,8 @@
     "solution": "Increase = 250 - 200 = 50. Percentage increase = (50/200) x 100 = 25%.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q04",
@@ -65,7 +68,8 @@
     "solution": "Decrease = 80 - 60 = 20. Percentage decrease = (20/80) x 100 = 25%.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q05",
@@ -82,7 +86,8 @@
     "solution": "Profit = 920 - 800 = 120. Profit% = (120/800) x 100 = 15%.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q06",
@@ -99,7 +104,8 @@
     "solution": "Loss = 250 - 200 = 50. Loss% = (50/250) x 100 = 20%.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q07",
@@ -116,7 +122,8 @@
     "solution": "Discount = 15% of 600 = 90. Selling price = 600 - 90 = Rs 510.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q08",
@@ -133,7 +140,8 @@
     "solution": "SI = (5000 x 8 x 2)/100 = Rs 800.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q09",
@@ -149,7 +157,8 @@
     "solution": "SI = (12000 x 5 x 3)/100 = Rs 1800.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   },
   {
     "id": "found.math.8.cq.q10",
@@ -165,6 +174,7 @@
     "solution": "Amount = 10000 x (1.1)^2 = 12100. CI = 12100 - 10000 = Rs 2100.",
     "grade": 8,
     "subject": "Mathematics",
-    "track": "Foundation"
+    "track": "Foundation",
+    "gold": true
   }
 ]

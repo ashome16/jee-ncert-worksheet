@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "qa:content": "node scripts/qa-content.mjs"
   },
   "dependencies": {
     "next": "16.3.3",

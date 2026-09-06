@@ -7,3 +7,29 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Foundation Grade 8 Maths content slice (locked)
+
+Working chapters — do not break generate/score, do not add new chapters:
+
+- `rational-numbers-and-integers`
+- `linear-equations-in-one-variable`
+- `comparing-quantities`
+
+Full schema and rules: [content/CONTRACT.md](content/CONTRACT.md). Taxonomy of
+locked chapters/subtopics: [content/taxonomy.yaml](content/taxonomy.yaml).
+
+Rules:
+
+- `generateWorksheet` for Foundation Grade 8 Mathematics loads **only**
+  `content/questions/foundation/math/grade-8/<chapter-slug>/`. It must never
+  fall back to the Physics/JEE question bank.
+- Each item must include `id`, `stem`, `type`, `options` (MCQ only), `answer`,
+  `solution`, `chapter`.
+- MCQ `answer` is a letter A–D that matches the correct option.
+- NAT `answer` is an integer or a `p/q` string.
+- Score against `item.answer` only. There is no global answer key.
+- Never commit the `.next` build directory.
+- Never fall back to Physics/JEE items for Foundation Grade 8 Mathematics.
+- Run `npm run qa:content` before committing content changes; it must pass.
+
