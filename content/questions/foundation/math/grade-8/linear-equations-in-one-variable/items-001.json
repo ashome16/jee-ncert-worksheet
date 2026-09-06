@@ -40,7 +40,7 @@
     "skill": "apply",
     "stem": "Solve for x: 5(x - 2) = 3x + 4.",
     "options": ["5", "7", "9", "11"],
-    "answer": "C",
+    "answer": "B",
     "short solution": "5x - 10 = 3x + 4, so 2x = 14, giving x = 7.",
     "solution": "5x - 10 = 3x + 4, so 2x = 14, giving x = 7.",
     "grade": 8,
