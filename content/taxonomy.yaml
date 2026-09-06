@@ -1,34 +1,50 @@
-# Locked taxonomy for the working Foundation Grade 8 Maths slice.
+# Locked taxonomy for the working Foundation Grade 8 content slice.
 # Do not add new chapters here without also adding a matching content shard
-# under content/questions/foundation/math/grade-8/<chapter-slug>/.
+# under content/questions/foundation/<subject-folder>/grade-8/<chapter-slug>/.
 
-grade: 8
-subject: Mathematics
-track: Foundation
-chapters:
-  - slug: rational-numbers-and-integers
-    title: Rational Numbers and Integers
-    subtopics:
-      - integers
-      - number-line
-      - equivalent-fractions
-      - add-subtract-rational
-      - multiply-divide-rational
-      - properties
-      - word-problem
-  - slug: linear-equations-in-one-variable
-    title: Linear Equations in One Variable
-    subtopics:
-      - solve-linear-equation
-      - fraction-coefficients
-      - age-word-problem
-      - money-word-problem
-  - slug: comparing-quantities
-    title: Comparing Quantities
-    subtopics:
-      - percent-of
-      - percent-change
-      - profit-loss
-      - discount
-      - simple-interest
-      - compound-interest
+subjects:
+  - grade: 8
+    subject: Mathematics
+    track: Foundation
+    contentFolder: math
+    chapters:
+      - slug: rational-numbers-and-integers
+        title: Rational Numbers and Integers
+        subtopics:
+          - integers
+          - number-line
+          - equivalent-fractions
+          - add-subtract-rational
+          - multiply-divide-rational
+          - properties
+          - word-problem
+      - slug: linear-equations-in-one-variable
+        title: Linear Equations in One Variable
+        subtopics:
+          - solve-linear-equation
+          - fraction-coefficients
+          - age-word-problem
+          - money-word-problem
+      - slug: comparing-quantities
+        title: Comparing Quantities
+        subtopics:
+          - percent-of
+          - percent-change
+          - profit-loss
+          - discount
+          - simple-interest
+          - compound-interest
+
+  - grade: 8
+    subject: Physics
+    track: Foundation
+    contentFolder: science
+    chapters:
+      - slug: force-friction-and-pressure
+        title: Force, Friction, and Pressure Systems
+        subtopics:
+          - contact-noncontact-force
+          - friction-helpful-harmful
+          - pressure-force-area
+          - liquid-pressure-depth
+

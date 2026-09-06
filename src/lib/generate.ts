@@ -24,13 +24,19 @@ function loadFormulaCards(slug: string): FormulaCard[] {
   return JSON.parse(fs.readFileSync(formulaFile, "utf8"));
 }
 
-function loadFoundationChapter(slug: string): Question[] {
+// Foundation Grade 8 content is sharded by subject folder: Mathematics -> math, Physics -> science.
+const FOUNDATION_SUBJECT_FOLDERS: Record<string, string> = {
+  Mathematics: "math",
+  Physics: "science",
+};
+
+function loadFoundationChapter(subjectFolder: string, slug: string): Question[] {
   const chapterDirectory = path.join(
     process.cwd(),
     "content",
     "questions",
     "foundation",
-    "math",
+    subjectFolder,
     "grade-8",
     slug
   );
@@ -57,9 +63,9 @@ function loadFoundationChapter(slug: string): Question[] {
 }
 
 export function generateWorksheet(filters: GenerateFilters): Worksheet {
-  const isFoundationMathematics = filters.grade === "8" && filters.subject === "Mathematics";
-  let availableQuestions = isFoundationMathematics
-    ? loadFoundationChapter(filters.chapterId)
+  const foundationSubjectFolder = filters.grade === "8" ? FOUNDATION_SUBJECT_FOLDERS[filters.subject] : undefined;
+  let availableQuestions = foundationSubjectFolder
+    ? loadFoundationChapter(foundationSubjectFolder, filters.chapterId)
     : QUESTION_BANK.filter((q) => q.chapterId === filters.chapterId);
 
   if (filters.types && filters.types.length > 0) {

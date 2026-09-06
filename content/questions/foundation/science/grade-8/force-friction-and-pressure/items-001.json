@@ -1,0 +1,158 @@
+[
+  {
+    "id": "found.sci.8.ffp.q01",
+    "type": "MCQ",
+    "difficulty": "L1",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "contact-noncontact-force",
+    "skill": "identify",
+    "stem": "Which of the following is an example of a non-contact force?",
+    "options": [
+      "Friction between tyres and the road",
+      "Muscular force used to push a cart",
+      "Force of gravity pulling an apple down",
+      "Force applied while kicking a ball"
+    ],
+    "answer": "C",
+    "solution": "Gravity acts on objects without the objects touching each other, so it is a non-contact force. The correct answer is C.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q02",
+    "type": "MCQ",
+    "difficulty": "L1",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "contact-noncontact-force",
+    "skill": "identify",
+    "stem": "Which of these forces requires direct contact between the objects involved?",
+    "options": [
+      "Gravitational force",
+      "Magnetic force",
+      "Frictional force",
+      "Electrostatic force"
+    ],
+    "answer": "C",
+    "solution": "Friction arises only when two surfaces are touching each other, which makes it a contact force. The correct answer is C.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q03",
+    "type": "MCQ",
+    "difficulty": "L1",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "friction-helpful-harmful",
+    "skill": "classify",
+    "stem": "In which situation is friction helpful rather than harmful?",
+    "options": [
+      "Walking on a rough floor without slipping",
+      "Wear and tear of shoe soles",
+      "Heating up of machine parts",
+      "Wastage of fuel in engines due to friction"
+    ],
+    "answer": "A",
+    "solution": "Friction between our feet and the ground allows us to walk without slipping, so here friction is helpful. The correct answer is A.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q04",
+    "type": "MCQ",
+    "difficulty": "L1",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "friction-helpful-harmful",
+    "skill": "classify",
+    "stem": "Which of the following is a harmful effect of friction?",
+    "options": [
+      "It allows us to write with a pen",
+      "It causes wearing out of machine parts",
+      "It helps brakes to stop a moving vehicle",
+      "It allows nails to stay fixed in wood"
+    ],
+    "answer": "B",
+    "solution": "Friction generates heat and gradually wears down moving machine parts, which is a harmful effect of friction. The correct answer is B.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q05",
+    "type": "MCQ",
+    "difficulty": "L2",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "pressure-force-area",
+    "skill": "apply",
+    "stem": "A given force is applied over a smaller area instead of a larger area. What happens to the pressure exerted, assuming the force stays the same?",
+    "options": [
+      "Pressure decreases",
+      "Pressure increases",
+      "Pressure remains the same",
+      "Pressure becomes zero"
+    ],
+    "answer": "B",
+    "solution": "Since pressure equals force divided by area, reducing the area while keeping the force constant increases the pressure. The correct answer is B.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q06",
+    "type": "MCQ",
+    "difficulty": "L1",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "liquid-pressure-depth",
+    "skill": "identify",
+    "stem": "How does the pressure exerted by a liquid change as the depth inside the liquid increases?",
+    "options": [
+      "It decreases with depth",
+      "It remains constant at all depths",
+      "It increases with depth",
+      "It becomes zero at the bottom"
+    ],
+    "answer": "C",
+    "solution": "Liquid pressure increases with depth because of the increasing weight of the liquid column above a given point. The correct answer is C.",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q07",
+    "type": "NAT",
+    "difficulty": "L2",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "pressure-force-area",
+    "skill": "calculate",
+    "stem": "A force of 50 N acts perpendicular to a surface of area 2 m². Calculate the pressure exerted, in N/m².",
+    "answer": "25",
+    "solution": "Pressure = Force / Area = 50/2 = 25 N/m².",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  },
+  {
+    "id": "found.sci.8.ffp.q08",
+    "type": "NAT",
+    "difficulty": "L2",
+    "chapter": "force-friction-and-pressure",
+    "subtopic": "liquid-pressure-depth",
+    "skill": "calculate",
+    "stem": "The pressure exerted by a liquid is directly proportional to its depth. At a depth of 2 m, the pressure is 20000 N/m². What is the pressure, in N/m², at a depth of 5 m in the same liquid?",
+    "answer": "50000",
+    "solution": "Pressure per metre of depth = 20000/2 = 10000 N/m² per metre. At a depth of 5 m, pressure = 10000 x 5 = 50000 N/m².",
+    "grade": 8,
+    "subject": "Physics",
+    "track": "Foundation",
+    "gold": true
+  }
+]

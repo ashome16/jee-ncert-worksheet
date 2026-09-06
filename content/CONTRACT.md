@@ -1,14 +1,14 @@
-# Content Contract — Foundation Grade 8 Maths
+# Content Contract — Foundation Grade 8 Content
 
-One-page schema and rules for `content/questions/foundation/math/grade-8/<chapter-slug>/`
+One-page schema and rules for `content/questions/foundation/<subject-folder>/grade-8/<chapter-slug>/`
 and `content/formulas/foundation/<chapter-slug>.json`. This is the only content the
 Foundation worksheet generator reads. Do not add chapters outside this contract.
 
 ## Locked chapters (do not break generate/score)
 
-- `rational-numbers-and-integers`
-- `linear-equations-in-one-variable`
-- `comparing-quantities`
+- Mathematics (`math` folder): `rational-numbers-and-integers`,
+  `linear-equations-in-one-variable`, `comparing-quantities`
+- Physics (`science` folder): `force-friction-and-pressure`
 
 ## Item schema (`items-*.json`)
 
@@ -43,9 +43,11 @@ JSON array of cards: `{ id, name, latex, vars, example }`. `id` values are what
 
 ## Generate/score rules
 
-- `generateWorksheet` loads **only**
-  `content/questions/foundation/math/grade-8/<chapter-slug>/` for Foundation
-  Grade 8 Mathematics. It never falls back to the Physics/JEE question bank.
+- `generateWorksheet` loads **only** the matching chapter shard under
+  `content/questions/foundation/<subject-folder>/grade-8/<chapter-slug>/` for
+  Foundation Grade 8 (subject folder `math` for Mathematics, `science` for
+  Physics/Chemistry/Biology). It never falls back to the Physics/JEE question
+  bank.
 - Each generated Foundation question is scored against its own `item.answer`.
 - Syllabus map (mastery) is tracked per chapter id independently; submitting
   one chapter must not reset another chapter's score.

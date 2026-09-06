@@ -1,0 +1,10 @@
+[
+  { "id": "found.sci.8.ffp.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "contact-noncontact-force" },
+  { "id": "found.sci.8.ffp.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "contact-noncontact-force" },
+  { "id": "found.sci.8.ffp.q03", "type": "MCQ", "difficulty": "L1", "subtopic": "friction-helpful-harmful" },
+  { "id": "found.sci.8.ffp.q04", "type": "MCQ", "difficulty": "L1", "subtopic": "friction-helpful-harmful" },
+  { "id": "found.sci.8.ffp.q05", "type": "MCQ", "difficulty": "L2", "subtopic": "pressure-force-area" },
+  { "id": "found.sci.8.ffp.q06", "type": "MCQ", "difficulty": "L1", "subtopic": "liquid-pressure-depth" },
+  { "id": "found.sci.8.ffp.q07", "type": "NAT", "difficulty": "L2", "subtopic": "pressure-force-area" },
+  { "id": "found.sci.8.ffp.q08", "type": "NAT", "difficulty": "L2", "subtopic": "liquid-pressure-depth" }
+]
