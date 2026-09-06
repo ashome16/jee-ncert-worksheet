@@ -227,7 +227,14 @@ export default function Home() {
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
   const standbyQuestionCount = level === "FOUNDATION" ? 8 : 2;
-  const standbyDuration = level === "FOUNDATION" && track === "CONCEPTUAL_QUIZ" ? "about 12 minutes" : track === "JEE_MOCK_TEST" ? "about 3 hours" : "about 45 minutes";
+  const standbyDurationMinutes = level === "FOUNDATION" && track === "CONCEPTUAL_QUIZ"
+    ? Math.max(5, Math.ceil((standbyQuestionCount * 90) / 60))
+    : level === "FOUNDATION" && track === "CHAPTER_PRACTICE"
+      ? standbyQuestionCount * 2
+      : track === "JEE_MOCK_TEST"
+        ? 180
+        : 15;
+  const standbyDuration = `about ${standbyDurationMinutes} minutes`;
   const standbyTrackName = track === "CONCEPTUAL_QUIZ" ? "Conceptual Quiz" : track === "JEE_MOCK_TEST" ? "JEE Mock Test" : "Chapter Practice";
   const totalQuestions = isFoundationMathematics && foundationQuestions.length > 0 ? foundationQuestions.length : 2;
   const answeredCount = isFoundationMathematics
