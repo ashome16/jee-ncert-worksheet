@@ -1,0 +1,14 @@
+[
+  { "id": "found.math.8.rat.q01", "type": "MCQ", "difficulty": "L1", "subtopic": "integers" },
+  { "id": "found.math.8.rat.q02", "type": "MCQ", "difficulty": "L1", "subtopic": "number-line" },
+  { "id": "found.math.8.rat.q03", "type": "MCQ", "difficulty": "L1", "subtopic": "equivalent-fractions" },
+  { "id": "found.math.8.rat.q04", "type": "MCQ", "difficulty": "L1", "subtopic": "add-subtract-rational" },
+  { "id": "found.math.8.rat.q05", "type": "MCQ", "difficulty": "L1", "subtopic": "multiply-divide-rational" },
+  { "id": "found.math.8.rat.q06", "type": "MCQ", "difficulty": "L2", "subtopic": "properties" },
+  { "id": "found.math.8.rat.q07", "type": "MCQ", "difficulty": "L2", "subtopic": "word-problem" },
+  { "id": "found.math.8.rat.q08", "type": "MCQ", "difficulty": "L2", "subtopic": "number-line" },
+  { "id": "found.math.8.rat.q09", "type": "NAT", "difficulty": "L1", "subtopic": "add-subtract-rational" },
+  { "id": "found.math.8.rat.q10", "type": "NAT", "difficulty": "L1", "subtopic": "multiply-divide-rational" },
+  { "id": "found.math.8.rat.q11", "type": "NAT", "difficulty": "L2", "subtopic": "equivalent-fractions" },
+  { "id": "found.math.8.rat.q12", "type": "NAT", "difficulty": "L2", "subtopic": "word-problem" }
+]
