@@ -1,0 +1,27 @@
+{
+  "chapter": "force-friction-and-pressure",
+  "title": "Force, Friction and Pressure Concept Map",
+  "nodes": [
+    { "id": "force", "label": "Force", "type": "concept", "position": { "x": 400, "y": 0 } },
+    { "id": "contact-force", "label": "Contact Force", "type": "concept", "position": { "x": 150, "y": 140 } },
+    { "id": "non-contact-force", "label": "Non-contact Force", "type": "concept", "position": { "x": 650, "y": 140 } },
+    { "id": "gravity", "label": "Gravity", "type": "concept", "position": { "x": 550, "y": 280 } },
+    { "id": "magnetic-force", "label": "Magnetic Force", "type": "concept", "position": { "x": 750, "y": 280 } },
+    { "id": "friction", "label": "Friction", "type": "concept", "position": { "x": 100, "y": 280 } },
+    { "id": "friction-helpful", "label": "Friction: Helpful", "type": "concept", "position": { "x": 0, "y": 420 } },
+    { "id": "friction-harmful", "label": "Friction: Harmful", "type": "concept", "position": { "x": 200, "y": 420 } },
+    { "id": "pressure", "label": "Pressure", "type": "formula", "formulaId": "found.sci.8.ffp.pressure", "position": { "x": 400, "y": 420 } },
+    { "id": "liquid-pressure", "label": "Liquid Pressure vs Depth", "type": "formula", "formulaId": "found.sci.8.ffp.liquid-pressure-depth", "position": { "x": 400, "y": 560 } }
+  ],
+  "edges": [
+    { "from": "force", "to": "contact-force", "label": "includes" },
+    { "from": "force", "to": "non-contact-force", "label": "includes" },
+    { "from": "non-contact-force", "to": "gravity", "label": "example" },
+    { "from": "non-contact-force", "to": "magnetic-force", "label": "example" },
+    { "from": "contact-force", "to": "friction", "label": "type of" },
+    { "from": "contact-force", "to": "pressure", "label": "produces" },
+    { "from": "friction", "to": "friction-helpful", "label": "can be" },
+    { "from": "friction", "to": "friction-harmful", "label": "can be" },
+    { "from": "pressure", "to": "liquid-pressure", "label": "applies to" }
+  ]
+}

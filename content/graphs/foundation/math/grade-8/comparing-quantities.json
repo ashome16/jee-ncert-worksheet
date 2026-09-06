@@ -1,0 +1,21 @@
+{
+  "chapter": "comparing-quantities",
+  "title": "Comparing Quantities Concept Map",
+  "nodes": [
+    { "id": "root", "label": "Comparing Quantities" },
+    { "id": "percent", "label": "Percent", "formulaId": "found.math.8.cq.percent-of" },
+    { "id": "percent-change", "label": "Percent Change", "formulaId": "found.math.8.cq.percent-change" },
+    { "id": "profit-loss", "label": "Profit / Loss", "formulaId": "found.math.8.cq.profit-loss" },
+    { "id": "discount", "label": "Discount", "formulaId": "found.math.8.cq.discount" },
+    { "id": "simple-interest", "label": "Simple Interest", "formulaId": "found.math.8.cq.simple-interest" },
+    { "id": "compound-interest", "label": "Compound Interest", "formulaId": "found.math.8.cq.compound-interest" }
+  ],
+  "edges": [
+    { "from": "root", "to": "percent" },
+    { "from": "root", "to": "percent-change" },
+    { "from": "percent", "to": "profit-loss" },
+    { "from": "percent", "to": "discount" },
+    { "from": "percent", "to": "simple-interest" },
+    { "from": "percent", "to": "compound-interest" }
+  ]
+}

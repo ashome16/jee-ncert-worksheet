@@ -1,0 +1,16 @@
+[
+  {
+    "id": "found.sci.8.ffp.pressure",
+    "name": "Pressure",
+    "latex": "P = \\dfrac{F}{A}",
+    "vars": { "P": "pressure", "F": "force applied", "A": "area of contact" },
+    "example": "A force of 50 N spread over 2 m^2 gives P = 50/2 = 25 Pa"
+  },
+  {
+    "id": "found.sci.8.ffp.liquid-pressure-depth",
+    "name": "Liquid Pressure vs Depth",
+    "latex": "P = h \\rho g",
+    "vars": { "h": "depth below the surface", "\\rho": "density of the liquid", "g": "acceleration due to gravity" },
+    "example": "At h = 2 m in water (rho = 1000 kg/m^3, g = 10 m/s^2): P = 2 x 1000 x 10 = 20000 Pa"
+  }
+]

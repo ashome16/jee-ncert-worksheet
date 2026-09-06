@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Atom, Calculator, Download, FlaskConical, GraduationCap, Leaf, Rocket, Sprout } from "lucide-react";
 import MathRenderer from "@/components/MathRenderer";
+import MermaidConceptMap from "@/components/MermaidConceptMap";
+import ConceptMap from "@/components/ConceptMap";
 
 type Level = "FOUNDATION" | "JEE";
 type ProfileTab = "HEATMAP" | "REPORTS";
@@ -15,6 +17,11 @@ type AttemptRecord = { timestamp: string; topicTitle: string; trackType: string;
 type AnswerKey = { mcq: string; nat: string };
 type FormulaCard = { id: string; name: string; latex: string; vars: Record<string, string>; example?: string };
 type FoundationQuestion = { id: string; type: "MCQ" | "NAT"; stem: string; options?: string[]; answer: string; solution?: string; formulas?: FormulaCard[]; [key: string]: unknown };
+type ConceptGraphNode = { id: string; label: string; formulaId?: string; type?: "concept" | "formula"; position?: { x: number; y: number } };
+type ConceptGraphEdge = { from: string; to: string; label?: string };
+type ConceptGraph = { chapter: string; title: string; nodes: ConceptGraphNode[]; edges: ConceptGraphEdge[] };
+
+const CONCEPT_MAP_PILOT_CHAPTER_SLUGS = ["force-friction-and-pressure"];
 type ProfileTrack = "foundation" | "jee";
 type StudentProfile = { name: string; avatar?: string; track: ProfileTrack; grade: string };
 type SavedPaper = { id: string; chapterId: string; chapterSlug: string; chapterTitle: string; savedAt: string; score?: string };
@@ -110,6 +117,13 @@ function isFoundationAnswerCorrect(question: FoundationQuestion, givenAnswer: st
   return given.toLowerCase() === question.answer.trim().toLowerCase();
 }
 
+function buildMermaidFlowchart(graph: ConceptGraph): string {
+  const lines = ["flowchart TD"];
+  for (const node of graph.nodes) lines.push(`  ${node.id}["${node.label}"]`);
+  for (const edge of graph.edges) lines.push(`  ${edge.from} --> ${edge.to}`);
+  return lines.join("\n");
+}
+
 function SubjectIcon({ subject, className = "" }: { subject: Subject; className?: string }) {
   const iconProps = { "aria-hidden": true, className: `shrink-0 ${className}` };
   if (subject === "Mathematics") return <Calculator {...iconProps} />;
@@ -135,6 +149,8 @@ export default function Home() {
   const [foundationAnswers, setFoundationAnswers] = useState<Record<string, string>>({});
   const [worksheetId, setWorksheetId] = useState<string | null>(null);
   const [saveToast, setSaveToast] = useState(false);
+  const [conceptMapOpen, setConceptMapOpen] = useState(false);
+  const [resultTab, setResultTab] = useState<"PAPER" | "MAP">("PAPER");
   const [duration, setDuration] = useState(180 * 60);
   const [timeLeft, setTimeLeft] = useState(180 * 60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -264,6 +280,7 @@ export default function Home() {
   const filteredChapters = useMemo(() => SYLLABUS.filter((item) => item.level === level && item.grade === grade && item.subject === subject), [level, grade, subject]);
   const selectedChapter = SYLLABUS.find((item) => item.id === chapterId);
   const isFoundationShardChapter = level === "FOUNDATION" && grade === "8";
+  const isConceptMapPilotChapter = isFoundationShardChapter && CONCEPT_MAP_PILOT_CHAPTER_SLUGS.includes(selectedChapter?.slug ?? "");
   const options = level === "FOUNDATION" ? FOUNDATION_OPTIONS : JEE_OPTIONS;
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
@@ -283,7 +300,7 @@ export default function Home() {
     : Number(Boolean(mcqAnswer)) + Number(Boolean(natAnswer.trim()));
   const remainingCount = totalQuestions - answeredCount;
 
-  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); setWorksheetId(null); };
+  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); setWorksheetId(null); setConceptMapOpen(false); setResultTab("PAPER"); };
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
   const generateWorksheet = async () => {
@@ -435,25 +452,59 @@ export default function Home() {
           <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: {capitalizeName(profile.name)} | Paper: {track}</p><p className="mt-1 text-xs text-zinc-500">Time allowed: {formatTime(duration)}</p></div><div className={`no-print flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase"><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">Answered: {answeredCount}</div><div className="rounded-lg bg-zinc-100 p-2 text-zinc-600">Questions: {totalQuestions}</div><div className="rounded-lg bg-amber-50 p-2 text-amber-700">Remaining: {remainingCount}</div></div>
-            {isFoundationShardChapter ? foundationQuestions.map((question, index) => <div key={question.id} className="border-b pb-6"><span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>Question {index + 1}: {question.type} | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{question.stem}</h2>{question.type === "MCQ" ? <div className="mt-4 grid gap-3 md:grid-cols-2">{question.options?.map((option, optionIndex) => { const choice = String.fromCharCode(65 + optionIndex); return <label key={choice} className={`cursor-pointer rounded-xl border p-3 text-sm ${foundationAnswers[question.id] === choice ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name={question.id} value={choice} checked={foundationAnswers[question.id] === choice} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mr-2" />{choice}. {option}</label>; })}</div> : <input aria-label={`Numerical answer for question ${index + 1}`} type="text" inputMode="decimal" value={foundationAnswers[question.id] ?? ""} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" />}{submitted && <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs"><p className={isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "Correct" : "Incorrect"}</p><p className="mt-1"><strong>Answer:</strong> {question.answer}</p>{question.solution && <p className="mt-1"><strong>Solution:</strong> {question.solution}</p>}{question.formulas?.map((formula) => <div key={formula.id} className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-2"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div>{formula.example && <p className="mt-1 text-blue-700">Example: {formula.example}</p>}</div>)}</div>}</div>) : <><div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div><div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div></>}
-            {submitted && isFoundationShardChapter && (() => {
+            {submitted && isConceptMapPilotChapter && <div className="no-print flex gap-2 border-b text-xs font-bold uppercase tracking-wider"><button type="button" onClick={() => setResultTab("PAPER")} className={`px-3 py-2 border-b-2 ${resultTab === "PAPER" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Paper</button><button type="button" onClick={() => setResultTab("MAP")} className={`px-3 py-2 border-b-2 ${resultTab === "MAP" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Map</button></div>}
+            {isFoundationShardChapter && (!(submitted && isConceptMapPilotChapter) || resultTab === "PAPER") ? foundationQuestions.map((question, index) => <div key={question.id} className="border-b pb-6"><span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>Question {index + 1}: {question.type} | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{question.stem}</h2>{question.type === "MCQ" ? <div className="mt-4 grid gap-3 md:grid-cols-2">{question.options?.map((option, optionIndex) => { const choice = String.fromCharCode(65 + optionIndex); return <label key={choice} className={`cursor-pointer rounded-xl border p-3 text-sm ${foundationAnswers[question.id] === choice ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name={question.id} value={choice} checked={foundationAnswers[question.id] === choice} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mr-2" />{choice}. {option}</label>; })}</div> : <input aria-label={`Numerical answer for question ${index + 1}`} type="text" inputMode="decimal" value={foundationAnswers[question.id] ?? ""} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" />}{submitted && <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs"><p className={isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "Correct" : "Incorrect"}</p><p className="mt-1"><strong>Answer:</strong> {question.answer}</p>{question.solution && <p className="mt-1"><strong>Solution:</strong> {question.solution}</p>}{question.formulas?.map((formula) => <div key={formula.id} className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-2"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div>{formula.example && <p className="mt-1 text-blue-700">Example: {formula.example}</p>}</div>)}</div>}</div>) : <><div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div><div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div></>}
+            {submitted && isFoundationShardChapter && (!isConceptMapPilotChapter || resultTab === "PAPER") && (() => {
               const mcqQuestions = foundationQuestions.filter((question) => question.type === "MCQ");
               const natQuestions = foundationQuestions.filter((question) => question.type === "NAT");
               const isCorrect = (question: FoundationQuestion) => isFoundationAnswerCorrect(question, foundationAnswers[question.id]);
               const mcqCorrectCount = mcqQuestions.filter(isCorrect).length;
               const natCorrectCount = natQuestions.filter(isCorrect).length;
+              const conceptGraph = foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined;
               return (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-                  <h2 className="font-black text-emerald-800">Evaluation Complete</h2>
-                  <p className="mt-1 text-emerald-700">MCQ: {mcqCorrectCount}/{mcqQuestions.length} correct | NAT: {natCorrectCount}/{natQuestions.length} correct</p>
-                  <details className="mt-3 text-xs">
-                    <summary className="cursor-pointer font-bold">View per-question results</summary>
-                    <div className="mt-2 space-y-1 font-mono">
-                      {foundationQuestions.map((question, index) => (
-                        <p key={question.id}>Q{index + 1} ({question.type}): your answer {foundationAnswers[question.id]?.trim() || "—"} | correct answer {question.answer} | {isCorrect(question) ? "Correct" : "Incorrect"}</p>
-                      ))}
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                    <h2 className="font-black text-emerald-800">Evaluation Complete</h2>
+                    <p className="mt-1 text-emerald-700">MCQ: {mcqCorrectCount}/{mcqQuestions.length} correct | NAT: {natCorrectCount}/{natQuestions.length} correct</p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <details>
+                        <summary className="cursor-pointer font-bold">View per-question results</summary>
+                        <div className="mt-2 space-y-1 font-mono">
+                          {foundationQuestions.map((question, index) => (
+                            <p key={question.id}>Q{index + 1} ({question.type}): your answer {foundationAnswers[question.id]?.trim() || "—"} | correct answer {question.answer} | {isCorrect(question) ? "Correct" : "Incorrect"}</p>
+                          ))}
+                        </div>
+                      </details>
+                      {conceptGraph && !isConceptMapPilotChapter && (
+                        <button type="button" onClick={() => setConceptMapOpen((open) => !open)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-bold text-blue-700">
+                          {conceptMapOpen ? "Hide concept map" : "Open concept map"}
+                        </button>
+                      )}
                     </div>
-                  </details>
+                  </div>
+                  {conceptGraph && conceptMapOpen && !isConceptMapPilotChapter && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
+                      <h3 className="font-black text-blue-900">{conceptGraph.title}</h3>
+                      <div className="no-print mt-4 rounded-lg bg-white p-3"><MermaidConceptMap chart={buildMermaidFlowchart(conceptGraph)} /></div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {conceptGraph.nodes.filter((node) => node.formulaId).map((node) => {
+                          const formula = foundationQuestions.flatMap((question) => question.formulas ?? []).find((card) => card.id === node.formulaId);
+                          return formula ? <div key={node.id} className="rounded-lg border border-blue-100 bg-white p-3"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div></div> : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {submitted && isConceptMapPilotChapter && resultTab === "MAP" && (() => {
+              const conceptGraph = foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined;
+              if (!conceptGraph) return null;
+              const formulas = foundationQuestions.flatMap((question) => question.formulas ?? []);
+              return (
+                <div className="space-y-3">
+                  <h3 className="font-black text-zinc-900">{conceptGraph.title}</h3>
+                  <ConceptMap graph={conceptGraph} formulas={formulas} />
                 </div>
               );
             })()}
@@ -492,6 +543,12 @@ export default function Home() {
               )}
             </section>
           ))}
+          {submitted && (foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined) && (
+            <section className="paper-map">
+              <h2>Concept Map</h2>
+              <MermaidConceptMap chart={buildMermaidFlowchart(foundationQuestions[0]?.conceptGraph as ConceptGraph)} />
+            </section>
+          )}
         </article>
       )}
       {saveToast && <div role="status" className="no-print fixed bottom-6 right-6 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-lg">Saved to class</div>}

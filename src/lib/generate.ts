@@ -11,6 +11,13 @@ interface FormulaCard {
   example?: string;
 }
 
+interface ConceptGraph {
+  chapter: string;
+  title: string;
+  nodes: { id: string; label: string; formulaId?: string }[];
+  edges: { from: string; to: string }[];
+}
+
 function loadFormulaCards(slug: string): FormulaCard[] {
   const formulaFile = path.join(
     process.cwd(),
@@ -32,6 +39,21 @@ const FOUNDATION_SUBJECT_FOLDERS: Record<string, string> = {
   Biology: "science",
 };
 
+function loadConceptGraph(subjectFolder: string, slug: string): ConceptGraph | undefined {
+  const graphFile = path.join(
+    process.cwd(),
+    "content",
+    "graphs",
+    "foundation",
+    subjectFolder,
+    "grade-8",
+    `${slug}.json`
+  );
+
+  if (!fs.existsSync(graphFile)) return undefined;
+  return JSON.parse(fs.readFileSync(graphFile, "utf8"));
+}
+
 function loadFoundationChapter(subjectFolder: string, slug: string): Question[] {
   const chapterDirectory = path.join(
     process.cwd(),
@@ -51,12 +73,14 @@ function loadFoundationChapter(subjectFolder: string, slug: string): Question[] 
 
   const formulaCards = loadFormulaCards(slug);
   const formulaById = new Map(formulaCards.map((card) => [card.id, card]));
+  const conceptGraph = loadConceptGraph(subjectFolder, slug);
 
-  return itemFiles.flatMap((fileName) => {
+  return itemFiles.flatMap((fileName, fileIndex) => {
     const file = JSON.parse(fs.readFileSync(path.join(chapterDirectory, fileName), "utf8"));
     const items = Array.isArray(file) ? file : file.items ?? [];
-    return items.map((item: { formulaIds?: string[] }) => ({
+    return items.map((item: { formulaIds?: string[] }, itemIndex: number) => ({
       ...item,
+      ...(fileIndex === 0 && itemIndex === 0 ? { conceptGraph } : {}),
       formulas: (item.formulaIds ?? [])
         .map((id: string) => formulaById.get(id))
         .filter((card: FormulaCard | undefined): card is FormulaCard => Boolean(card)),
