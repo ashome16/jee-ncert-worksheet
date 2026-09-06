@@ -8,13 +8,14 @@ type ProfileTab = "HEATMAP" | "REPORTS";
 type Subject = "Mathematics" | "Physics" | "Chemistry" | "Biology";
 type ExamTrack = "JEE_MOCK_TEST" | "CONCEPTUAL_QUIZ" | "CHAPTER_PRACTICE";
 
-type Chapter = { id: string; title: string; grade: string; subject: Subject; level: Level };
+type Chapter = { id: string; slug?: string; title: string; grade: string; subject: Subject; level: Level };
 type AttemptRecord = { timestamp: string; topicTitle: string; trackType: string; difficulty: string; score: string; accuracy: number; cognitiveAlert: string };
 type AnswerKey = { mcq: string; nat: string };
 
 const SYLLABUS: Chapter[] = [
-  { id: "g8_mat_01", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
-  { id: "g8_mat_02", title: "Linear Equations in One Variable", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_mat_02", slug: "linear-equations-in-one-variable", title: "Linear Equations in One Variable", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_mat_03", slug: "comparing-quantities", title: "Comparing Quantities", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
   { id: "g8_phy_01", title: "Force, Friction, and Pressure Systems", grade: "8", subject: "Physics", level: "FOUNDATION" },
   { id: "g8_che_01", title: "Synthetic Fibres, Biopolymers and Plastics", grade: "8", subject: "Chemistry", level: "FOUNDATION" },
   { id: "g8_bio_01", title: "Cell Organelles, Functions and Structures", grade: "8", subject: "Biology", level: "FOUNDATION" },
@@ -54,6 +55,7 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState("Mixed Matrix");
   const [track, setTrack] = useState<ExamTrack>("JEE_MOCK_TEST");
   const [worksheetOpen, setWorksheetOpen] = useState(false);
+  const [foundationEmpty, setFoundationEmpty] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [mcqAnswer, setMcqAnswer] = useState("");
   const [natAnswer, setNatAnswer] = useState("");
@@ -71,10 +73,23 @@ export default function Home() {
   const answerKey = ANSWER_KEYS[level];
   const elapsed = duration - timeLeft;
 
-  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); };
+  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); };
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
-  const generateWorksheet = () => { const nextDuration = track === "JEE_MOCK_TEST" ? 180 * 60 : track === "CONCEPTUAL_QUIZ" ? 15 * 60 : 45 * 60; deadlineRef.current = Date.now() + nextDuration * 1000; setDuration(nextDuration); setTimeLeft(nextDuration); setMcqAnswer(""); setNatAnswer(""); setSubmitted(false); setWorksheetOpen(true); };
+  const generateWorksheet = async () => {
+    const nextDuration = track === "JEE_MOCK_TEST" ? 180 * 60 : track === "CONCEPTUAL_QUIZ" ? 15 * 60 : 45 * 60;
+    setFoundationEmpty(false);
+    if (level === "FOUNDATION" && grade === "8" && subject === "Mathematics") {
+      const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subject, chapterId: selectedChapter?.slug ?? chapterId, difficulty: "Mixed", types: ["MCQ", "NAT"], count: 10 }) });
+      const result = await response.json();
+      if (!result.worksheet?.questions?.length) {
+        setFoundationEmpty(true);
+        setWorksheetOpen(true);
+        return;
+      }
+    }
+    deadlineRef.current = Date.now() + nextDuration * 1000; setDuration(nextDuration); setTimeLeft(nextDuration); setMcqAnswer(""); setNatAnswer(""); setSubmitted(false); setWorksheetOpen(true);
+  };
   const submitAssessment = (autoSubmitted = false) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const mcqCorrect = mcqAnswer === answerKey.mcq;
@@ -126,7 +141,7 @@ export default function Home() {
             <button type="button" onClick={generateWorksheet} className="w-full rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700">Generate NTA Worksheet</button>
           </div></section>
 
-          <section className="space-y-4 lg:col-span-2">{worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
+          <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: sharvah | Paper: {track}</p></div><div className={`flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase"><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">Answered: {submitted ? (mcqAnswer ? 1 : 0) + (natAnswer ? 1 : 0) : 0}</div><div className="rounded-lg bg-zinc-100 p-2 text-zinc-600">Questions: 2</div><div className="rounded-lg bg-amber-50 p-2 text-amber-700">Remaining: {submitted ? 0 : 2}</div></div>
             <div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{level === "FOUNDATION" ? "Solve 3x - 7 = 5x + 9." : "A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range."}</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div>

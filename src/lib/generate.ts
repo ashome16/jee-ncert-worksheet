@@ -1,10 +1,36 @@
 import { QUESTION_BANK } from "./bank";
 import { GenerateFilters, Worksheet, QuestionType } from "./types";
+import fs from "node:fs";
+import path from "node:path";
+
+function loadFoundationChapter(slug: string): Question[] {
+  const chapterDirectory = path.join(
+    process.cwd(),
+    "content",
+    "questions",
+    "foundation",
+    "math",
+    "grade-8",
+    slug
+  );
+
+  if (!fs.existsSync(chapterDirectory)) return [];
+
+  const itemFiles = fs.readdirSync(chapterDirectory)
+    .filter((fileName) => /^items-\d+\.json$/.test(fileName))
+    .sort();
+
+  return itemFiles.flatMap((fileName) => {
+    const file = JSON.parse(fs.readFileSync(path.join(chapterDirectory, fileName), "utf8"));
+    return Array.isArray(file) ? file : file.items ?? [];
+  });
+}
 
 export function generateWorksheet(filters: GenerateFilters): Worksheet {
-  let availableQuestions = QUESTION_BANK.filter(
-    (q) => q.chapterId === filters.chapterId
-  );
+  const isFoundationMathematics = filters.grade === "8" && filters.subject === "Mathematics";
+  let availableQuestions = isFoundationMathematics
+    ? loadFoundationChapter(filters.chapterId)
+    : QUESTION_BANK.filter((q) => q.chapterId === filters.chapterId);
 
   if (filters.types && filters.types.length > 0) {
     const selectedTypes = filters.types as QuestionType[];
