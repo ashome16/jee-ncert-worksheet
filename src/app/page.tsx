@@ -389,7 +389,14 @@ export default function Home() {
                 ✎
               </button>
             </div>
-            <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">Open JoSAA Seat Predictor</Link>
+           <div className="flex flex-wrap gap-2">
+  <Link href="/crucible" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-bold text-zinc-800 hover:bg-zinc-50">
+    JEE Main vs Advanced guide
+  </Link>
+  <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">
+    Open JoSAA Seat Predictor
+  </Link>
+</div>
           </div>
           {profileEditorOpen && (
             <div className="space-y-3 rounded-xl border bg-zinc-50 p-4 text-xs">
