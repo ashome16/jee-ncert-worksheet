@@ -1,101 +1,557 @@
-import Link from "next/link"; 
+"use client";
 
-export default function CrucibleArticle() {
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Atom, Calculator, Download, FlaskConical, GraduationCap, Leaf, Rocket, Sprout } from "lucide-react";
+import MathRenderer from "@/components/MathRenderer";
+import MermaidConceptMap from "@/components/MermaidConceptMap";
+import ConceptMap from "@/components/ConceptMap";
+
+type Level = "FOUNDATION" | "JEE";
+type ProfileTab = "HEATMAP" | "REPORTS";
+type Subject = "Mathematics" | "Physics" | "Chemistry" | "Biology";
+type ExamTrack = "JEE_MOCK_TEST" | "CONCEPTUAL_QUIZ" | "CHAPTER_PRACTICE";
+
+type Chapter = { id: string; slug?: string; title: string; grade: string; subject: Subject; level: Level };
+type AttemptRecord = { timestamp: string; topicTitle: string; trackType: string; difficulty: string; score: string; accuracy: number; cognitiveAlert: string };
+type AnswerKey = { mcq: string; nat: string };
+type FormulaCard = { id: string; name: string; latex: string; vars: Record<string, string>; example?: string };
+type FoundationQuestion = { id: string; type: "MCQ" | "NAT"; stem: string; options?: string[]; answer: string; solution?: string; formulas?: FormulaCard[]; [key: string]: unknown };
+type ConceptGraphNode = { id: string; label: string; formulaId?: string; type?: "concept" | "formula"; position?: { x: number; y: number } };
+type ConceptGraphEdge = { from: string; to: string; label?: string };
+type ConceptGraph = { chapter: string; title: string; nodes: ConceptGraphNode[]; edges: ConceptGraphEdge[] };
+
+const CONCEPT_MAP_PILOT_CHAPTER_SLUGS = ["force-friction-and-pressure"];
+type ProfileTrack = "foundation" | "jee";
+type StudentProfile = { name: string; avatar?: string; track: ProfileTrack; grade: string };
+type SavedPaper = { id: string; chapterId: string; chapterSlug: string; chapterTitle: string; savedAt: string; score?: string };
+
+const SYLLABUS: Chapter[] = [
+  { id: "g8_mat_01", slug: "rational-numbers-and-integers", title: "Rational Numbers and Integers", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_mat_02", slug: "linear-equations-in-one-variable", title: "Linear Equations in One Variable", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_mat_03", slug: "comparing-quantities", title: "Comparing Quantities", grade: "8", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g8_phy_01", slug: "force-friction-and-pressure", title: "Force, Friction, and Pressure Systems", grade: "8", subject: "Physics", level: "FOUNDATION" },
+  { id: "g8_che_01", slug: "synthetic-fibres-biopolymers-and-plastics", title: "Synthetic Fibres, Biopolymers and Plastics", grade: "8", subject: "Chemistry", level: "FOUNDATION" },
+  { id: "g8_bio_01", slug: "cell-organelles-functions-and-structures", title: "Cell Organelles, Functions and Structures", grade: "8", subject: "Biology", level: "FOUNDATION" },
+  { id: "g9_mat_01", slug: "polynomials-roots-and-coordinate-geometry", title: "Polynomials, Roots and Coordinate Geometry", grade: "9", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g9_phy_01", slug: "gravitation-laws-of-motion-and-kinematics", title: "Gravitation, Laws of Motion and Kinematics", grade: "9", subject: "Physics", level: "FOUNDATION" },
+  { id: "g10_mat_01", slug: "quadratic-equations-and-trigonometry", title: "Quadratic Equations and Trigonometry", grade: "10", subject: "Mathematics", level: "FOUNDATION" },
+  { id: "g10_phy_01", slug: "light-reflection-refraction-and-human-eye", title: "Light Reflection, Refraction and Human Eye", grade: "10", subject: "Physics", level: "FOUNDATION" },
+  { id: "g11_mat_01", slug: "permutations-combinations-and-probability", title: "Permutations, Combinations and Probability", grade: "11", subject: "Mathematics", level: "JEE" },
+  { id: "g11_phy_01", slug: "units-dimensions-and-rotational-kinematics", title: "Units, Dimensions and Rotational Kinematics", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g12_mat_01", slug: "matrices-determinants-and-vector-calculus", title: "Matrices, Determinants and Vector Calculus", grade: "12", subject: "Mathematics", level: "JEE" },
+  { id: "g12_phy_01", slug: "electrostatics-gauss-law-and-field-potentials", title: "Electrostatics, Gauss Law and Field Potentials", grade: "12", subject: "Physics", level: "JEE" },
+  { id: "g12_phy_02", slug: "current-electricity-and-advanced-circuit-networks", title: "Current Electricity and Advanced Circuit Networks", grade: "12", subject: "Physics", level: "JEE" },
+];
+
+const FOUNDATION_OPTIONS = ["A. x = -8", "B. x = 8", "C. x = -1", "D. x = 2"];
+const JEE_OPTIONS = ["A. 2.4 meters", "B. 4.8 meters", "C. 1.2 meters", "D. 3.6 meters"];
+const ANSWER_KEYS: Record<Level, AnswerKey> = { FOUNDATION: { mcq: "B. x = 8", nat: "50" }, JEE: { mcq: "A. 2.4 meters", nat: "50" } };
+const INITIAL_ATTEMPTS: AttemptRecord[] = [{ timestamp: "2 mins ago", topicTitle: "Electrostatics, Gauss Law and Field Potentials", trackType: "Full-Pattern JEE Mock Test", difficulty: "Mixed Matrix", score: "8/8 Marks", accuracy: 100, cognitiveAlert: "Standard parameters verified. Baseline engineering calculations executed smoothly." }];
+
+function formatTime(totalSeconds: number): string {
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function toNumericValue(value: string): number {
+  const trimmed = value.trim();
+  const fractionMatch = trimmed.match(/^(-?\d+)\s*\/\s*(-?\d+)$/);
+  if (fractionMatch) return Number(fractionMatch[1]) / Number(fractionMatch[2]);
+  return Number(trimmed);
+}
+
+const MASTERY_STORAGE_KEY = "syllabus_mastery_map_v1";
+const PROFILE_STORAGE_KEY = "student-profile";
+const SAVED_PAPERS_STORAGE_KEY = "student-workspace-papers-v1";
+const FOUNDATION_GRADES = ["8", "9", "10"];
+const JEE_GRADES = ["11", "12"];
+const DEFAULT_PROFILE: StudentProfile = { name: "Sharvah", avatar: undefined, track: "foundation", grade: "8" };
+
+function trackToLevel(track: ProfileTrack): Level {
+  return track === "foundation" ? "FOUNDATION" : "JEE";
+}
+
+function levelToTrack(level: Level): ProfileTrack {
+  return level === "FOUNDATION" ? "foundation" : "jee";
+}
+
+function capitalizeName(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase()).join(" ") || "Student";
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  return (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
+}
+
+function slugify(text: string): string {
+  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
+}
+
+// Composite key scopes mastery to the active track + grade + subject + chapter, e.g. foundation|8|mathematics|rational-numbers-and-integers
+function masteryKey(levelValue: Level, gradeValue: string, subjectValue: Subject, slug: string): string {
+  return `${levelValue.toLowerCase()}|${gradeValue}|${subjectValue.toLowerCase()}|${slug}`;
+}
+
+function chapterMasteryKey(chapter: Chapter | undefined, fallbackId: string): string {
+  if (!chapter) return fallbackId;
+  return masteryKey(chapter.level, chapter.grade, chapter.subject, chapter.slug ?? slugify(chapter.title));
+}
+
+const DEFAULT_MASTERY: Record<string, number> = {
+  [masteryKey("JEE", "12", "Physics", "electrostatics-gauss-law-and-field-potentials")]: 100,
+  [masteryKey("JEE", "12", "Physics", "current-electricity-and-advanced-circuit-networks")]: 45,
+};
+
+function isFoundationAnswerCorrect(question: FoundationQuestion, givenAnswer: string | undefined): boolean {
+  const given = (givenAnswer ?? "").trim();
+  if (!given) return false;
+  if (question.type === "MCQ") return given.toUpperCase() === question.answer.trim().toUpperCase();
+  const givenValue = toNumericValue(given);
+  const correctValue = toNumericValue(question.answer);
+  if (Number.isFinite(givenValue) && Number.isFinite(correctValue)) return givenValue === correctValue;
+  return given.toLowerCase() === question.answer.trim().toLowerCase();
+}
+
+function buildMermaidFlowchart(graph: ConceptGraph): string {
+  const lines = ["flowchart TD"];
+  for (const node of graph.nodes) lines.push(`  ${node.id}["${node.label}"]`);
+  for (const edge of graph.edges) lines.push(`  ${edge.from} --> ${edge.to}`);
+  return lines.join("\n");
+}
+
+function SubjectIcon({ subject, className = "" }: { subject: Subject; className?: string }) {
+  const iconProps = { "aria-hidden": true, className: `shrink-0 ${className}` };
+  if (subject === "Mathematics") return <Calculator {...iconProps} />;
+  if (subject === "Physics") return <Atom {...iconProps} />;
+  if (subject === "Chemistry") return <FlaskConical {...iconProps} />;
+  return <Leaf {...iconProps} />;
+}
+
+export default function Home() {
+  const [profileTab, setProfileTab] = useState<ProfileTab>("HEATMAP");
+  const [level, setLevel] = useState<Level>("JEE");
+  const [grade, setGrade] = useState("12");
+  const [subject, setSubject] = useState<Subject>("Physics");
+  const [chapterId, setChapterId] = useState("g12_phy_01");
+  const [difficulty, setDifficulty] = useState("Mixed Matrix");
+  const [track, setTrack] = useState<ExamTrack>("JEE_MOCK_TEST");
+  const [worksheetOpen, setWorksheetOpen] = useState(false);
+  const [foundationEmpty, setFoundationEmpty] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [mcqAnswer, setMcqAnswer] = useState("");
+  const [natAnswer, setNatAnswer] = useState("");
+  const [foundationQuestions, setFoundationQuestions] = useState<FoundationQuestion[]>([]);
+  const [foundationAnswers, setFoundationAnswers] = useState<Record<string, string>>({});
+  const [worksheetId, setWorksheetId] = useState<string | null>(null);
+  const [saveToast, setSaveToast] = useState(false);
+  const [conceptMapOpen, setConceptMapOpen] = useState(false);
+  const [resultTab, setResultTab] = useState<"PAPER" | "MAP">("PAPER");
+  const [duration, setDuration] = useState(180 * 60);
+  const [timeLeft, setTimeLeft] = useState(180 * 60);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deadlineRef = useRef<number | null>(null);
+  const [attempts, setAttempts] = useState<AttemptRecord[]>(INITIAL_ATTEMPTS);
+  const [mastery, setMastery] = useState<Record<string, number>>(DEFAULT_MASTERY);
+  const [profile, setProfile] = useState<StudentProfile>(DEFAULT_PROFILE);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [profileDraft, setProfileDraft] = useState<StudentProfile>(DEFAULT_PROFILE);
+
+  const applyProfileToWorkspace = (nextProfile: StudentProfile) => {
+    const nextLevel = trackToLevel(nextProfile.track);
+    const firstChapter = SYLLABUS.find((item) => item.level === nextLevel && item.grade === nextProfile.grade);
+    setLevel(nextLevel);
+    setGrade(nextProfile.grade);
+    setSubject(firstChapter?.subject ?? (nextLevel === "FOUNDATION" ? "Mathematics" : "Physics"));
+    setChapterId(firstChapter?.id ?? "");
+    setTrack(nextLevel === "FOUNDATION" ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST");
+  };
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+      const loaded = raw ? { ...DEFAULT_PROFILE, ...JSON.parse(raw) } : DEFAULT_PROFILE;
+      setProfile(loaded);
+      setProfileDraft(loaded);
+      applyProfileToWorkspace(loaded);
+    } catch {
+      // ignore malformed or inaccessible storage
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistProfile = (nextProfile: StudentProfile) => {
+    setProfile(nextProfile);
+    try {
+      window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+    } catch {
+      // ignore inaccessible storage
+    }
+  };
+
+  const saveProfileFromEditor = () => {
+    const cleanedDraft: StudentProfile = { ...profileDraft, name: profileDraft.name.trim() || DEFAULT_PROFILE.name };
+    persistProfile(cleanedDraft);
+    applyProfileToWorkspace(cleanedDraft);
+    resetAssessment();
+    setProfileEditorOpen(false);
+  };
+
+  const saveCurrentSelectionAsClass = () => {
+    const nextProfile: StudentProfile = { ...profile, track: levelToTrack(level), grade };
+    persistProfile(nextProfile);
+    setProfileDraft(nextProfile);
+
+    if (!isFoundationShardChapter || !worksheetId || !selectedChapter?.slug) return;
+
+    const correctAnswers = submitted
+      ? foundationQuestions.filter((question) => isFoundationAnswerCorrect(question, foundationAnswers[question.id])).length
+      : undefined;
+    const savedPaper: SavedPaper = {
+      id: worksheetId,
+      chapterId,
+      chapterSlug: selectedChapter.slug,
+      chapterTitle: selectedChapter.title,
+      savedAt: new Date().toISOString(),
+      score: correctAnswers === undefined ? undefined : `${correctAnswers * 4}/${foundationQuestions.length * 4}`,
+    };
+    try {
+      const raw = window.localStorage.getItem(SAVED_PAPERS_STORAGE_KEY);
+      const savedPapers = raw ? JSON.parse(raw) : [];
+      const nextSavedPapers = Array.isArray(savedPapers)
+        ? [savedPaper, ...savedPapers.filter((paper: SavedPaper) => paper.id !== worksheetId)]
+        : [savedPaper];
+      window.localStorage.setItem(SAVED_PAPERS_STORAGE_KEY, JSON.stringify(nextSavedPapers));
+      setSaveToast(true);
+      window.setTimeout(() => setSaveToast(false), 2500);
+    } catch {
+      // ignore inaccessible storage
+    }
+  };
+
+  const downloadFoundationPdf = () => {
+    if (!isFoundationShardChapter || !worksheetId || !selectedChapter?.slug) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `foundation-grade8-${selectedChapter.slug}-${date}.pdf`;
+    const previousTitle = document.title;
+    document.title = filename;
+    window.addEventListener("afterprint", () => { document.title = previousTitle; }, { once: true });
+    window.print();
+  };
+
+  const handleAvatarUpload = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProfileDraft((current) => ({ ...current, avatar: String(reader.result) }));
+    reader.readAsDataURL(file);
+  };
+
+  const heatmapChapters = useMemo(
+    () => SYLLABUS.filter((item) => item.level === trackToLevel(profile.track) && item.grade === profile.grade),
+    [profile]
+  );
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(MASTERY_STORAGE_KEY);
+      if (raw) setMastery(JSON.parse(raw));
+    } catch {
+      // ignore malformed or inaccessible storage
+    }
+  }, []);
+
+  const updateMastery = (key: string, value: number) => {
+    setMastery((current) => {
+      const next = { ...current, [key]: Math.max(current[key] ?? 0, value) };
+      try {
+        window.localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore inaccessible storage
+      }
+      return next;
+    });
+  };
+
+  const grades = level === "FOUNDATION" ? ["8", "9", "10"] : ["11", "12"];
+  const filteredChapters = useMemo(() => SYLLABUS.filter((item) => item.level === level && item.grade === grade && item.subject === subject), [level, grade, subject]);
+  const selectedChapter = SYLLABUS.find((item) => item.id === chapterId);
+  const isFoundationShardChapter = level === "FOUNDATION" && grade === "8";
+  const isConceptMapPilotChapter = isFoundationShardChapter && CONCEPT_MAP_PILOT_CHAPTER_SLUGS.includes(selectedChapter?.slug ?? "");
+  const options = level === "FOUNDATION" ? FOUNDATION_OPTIONS : JEE_OPTIONS;
+  const answerKey = ANSWER_KEYS[level];
+  const elapsed = duration - timeLeft;
+  const standbyQuestionCount = level === "FOUNDATION" ? 8 : 2;
+  const standbyDurationMinutes = level === "FOUNDATION" && track === "CONCEPTUAL_QUIZ"
+    ? Math.max(5, Math.ceil((standbyQuestionCount * 90) / 60))
+    : level === "FOUNDATION" && track === "CHAPTER_PRACTICE"
+      ? standbyQuestionCount * 2
+      : track === "JEE_MOCK_TEST"
+        ? 180
+        : 15;
+  const standbyDuration = `about ${standbyDurationMinutes} minutes`;
+  const standbyTrackName = track === "CONCEPTUAL_QUIZ" ? "Conceptual Quiz" : track === "JEE_MOCK_TEST" ? "JEE Mock Test" : "Chapter Practice";
+  const totalQuestions = isFoundationShardChapter && foundationQuestions.length > 0 ? foundationQuestions.length : 2;
+  const answeredCount = isFoundationShardChapter
+    ? Object.values(foundationAnswers).filter((answer) => answer.trim()).length
+    : Number(Boolean(mcqAnswer)) + Number(Boolean(natAnswer.trim()));
+  const remainingCount = totalQuestions - answeredCount;
+
+  const resetAssessment = () => { if (timerRef.current) clearInterval(timerRef.current); deadlineRef.current = null; setWorksheetOpen(false); setFoundationEmpty(false); setSubmitted(false); setMcqAnswer(""); setNatAnswer(""); setFoundationQuestions([]); setFoundationAnswers({}); setWorksheetId(null); setConceptMapOpen(false); setResultTab("PAPER"); };
+  const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
+  const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
+  const generateWorksheet = async () => {
+    setFoundationEmpty(false);
+    setFoundationQuestions([]);
+    setFoundationAnswers({});
+    let questionCount = 2;
+    if (isFoundationShardChapter) {
+      const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subject, chapterId: selectedChapter?.slug ?? chapterId, difficulty: "Mixed", types: ["MCQ", "NAT"], count: 10 }) });
+      const result = await response.json();
+      const shardQuestions = (result.worksheet?.questions ?? []) as FoundationQuestion[];
+      const selectedQuestions = track === "CONCEPTUAL_QUIZ" ? shardQuestions.slice(0, 8) : shardQuestions;
+      if (!selectedQuestions.length) {
+        setFoundationEmpty(true);
+        setWorksheetOpen(true);
+        return;
+      }
+      setFoundationQuestions(selectedQuestions);
+      setWorksheetId(`foundation-grade8-${selectedChapter?.slug ?? chapterId}-${Date.now()}`);
+      questionCount = selectedQuestions.length;
+    }
+    const nextDuration = isFoundationShardChapter
+      ? Math.max(5 * 60, questionCount * 90)
+      : track === "JEE_MOCK_TEST"
+        ? 180 * 60
+        : track === "CONCEPTUAL_QUIZ"
+          ? 15 * 60
+          : 45 * 60;
+    deadlineRef.current = Date.now() + nextDuration * 1000; setDuration(nextDuration); setTimeLeft(nextDuration); setMcqAnswer(""); setNatAnswer(""); setSubmitted(false); setWorksheetOpen(true);
+  };
+  const submitAssessment = (autoSubmitted = false) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (isFoundationShardChapter) {
+      const correctAnswers = foundationQuestions.filter((question) => isFoundationAnswerCorrect(question, foundationAnswers[question.id])).length;
+      const maxScore = foundationQuestions.length * 4;
+      const score = correctAnswers * 4;
+      const record: AttemptRecord = { timestamp: "Just now", topicTitle: selectedChapter?.title ?? "Multi-topic session", trackType: "Conceptual quiz", difficulty, score: `${score}/${maxScore} Marks`, accuracy: foundationQuestions.length ? (correctAnswers / foundationQuestions.length) * 100 : 0, cognitiveAlert: autoSubmitted || timeLeft === 0 ? "Auto-submitted: time limit expired before manual confirmation." : score === maxScore ? "System evaluation finalized successfully." : "Review the shard-backed answer key and repeat focused calculation drills." };
+      setAttempts((history) => [record, ...history]);
+      updateMastery(chapterMasteryKey(selectedChapter, chapterId), record.accuracy);
+      setSubmitted(true);
+      return;
+    }
+    const mcqCorrect = mcqAnswer === answerKey.mcq;
+    const natCorrect = natAnswer.trim() === answerKey.nat;
+    const score = (mcqCorrect ? 4 : 0) + (natCorrect ? 4 : 0);
+    const record: AttemptRecord = { timestamp: "Just now", topicTitle: selectedChapter?.title ?? "Multi-topic session", trackType: track === "JEE_MOCK_TEST" ? "Full-Pattern JEE Mock Test" : track === "CONCEPTUAL_QUIZ" ? "Conceptual quiz" : "Chapter practice", difficulty, score: `${score}/8 Marks`, accuracy: score * 12.5, cognitiveAlert: autoSubmitted || timeLeft === 0 ? "Auto-submitted: time limit expired before manual confirmation." : score === 8 ? "System evaluation finalized successfully." : "Review the response vector and repeat two focused calculation drills." };
+    setAttempts((history) => [record, ...history]);
+    updateMastery(chapterMasteryKey(selectedChapter, chapterId), score === 8 ? 100 : 65);
+    setSubmitted(true);
+  };
+
+  useEffect(() => {
+    if (!worksheetOpen || submitted || deadlineRef.current === null) return;
+    timerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadlineRef.current! - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        submitAssessment(true);
+      }
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [worksheetOpen, submitted]);
+
   return (
     <main className="min-h-screen bg-zinc-50 p-4 text-zinc-900 md:p-10">
-      <article className="mx-auto max-w-3xl space-y-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:p-10">
-        <Link href="/" className="inline-block text-xs font-bold text-zinc-500 hover:text-zinc-900">
-          ← Back to worksheet
-        </Link>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">
-          Linked briefing · JEE Main & Advanced
-        </p>
-        <h1 className="text-3xl font-black leading-tight">
-          The Crucible of Indian Engineering
-        </h1>
-        <p className="text-sm text-zinc-500">
-          Decoding the formats, syllabus gaps, and zero-error margins of JEE Main and JEE Advanced.
-        </p>
-        <p>
-          For an Indian engineering aspirant, JEE is not just an exam. It is a multi-year rite of passage:
-          two stages, JEE Main and JEE Advanced, and one of the most demanding academic filters in the world.
-        </p>
-        <p>
-          The paradox to learn early: <strong>Main is a sprint of speed and near-flawless accuracy</strong>.
-          <strong> Advanced is an endurance war</strong>.
-        </p>
-        <h2 className="text-xl font-black">1. Why ~90% accuracy on a “qualifying” paper?</h2>
-        <p>
-          JEE Main screens a huge field for Advanced, but hyper-competition and category cut-offs shrink the
-          real margin. A General category student typically needs roughly the top 96,000–100,000 ranks to
-          reach Advanced. Historic General cut-offs near the 93 percentile have often sat around 100–120 / 300
-          in an average or easier shift. Miss that line and the IIT path via Advanced ends that year.
-        </p>
-        <p>
-          Qualifying alone is not a college. A ~1,00,000 AIR does not unlock NITs, IIITs, or strong GFTIs.
-          A safer General backup is often 98.5+ percentile (commonly ~175–195+ marks, shift-dependent).
-          That is why 85–90% accuracy is treated as mandatory: you are buying an insurance rank, not just a hall ticket.
-        </p>
-        <p className="text-xs text-zinc-500">
-          Percentiles and raw marks move every session. Treat the numbers above as planning ranges, not official NTA cut-offs.
-        </p>
-        <h2 className="text-xl font-black">2. The two-attempt clocks</h2>
-        <p>
-          <strong>JEE Main:</strong> two sessions a year (usually January and April). Best percentile across sessions
-          is used for rank. You may write Main for three consecutive years from the Class 12 year.
-        </p>
-        <p>
-          <strong>JEE Advanced:</strong> two attempts in a lifetime, and they must be consecutive — Class 12 year and
-          the next year only. Qualifying and then skipping registration still burns an attempt.
-        </p>
-        <pre className="overflow-x-auto rounded-xl bg-zinc-950 p-4 text-xs text-zinc-100">
-{`YEAR 1 (Class 12)  → JEE Main (S1 & S2) → [qualify] → Advanced (Attempt 1)
-YEAR 2 (Dropper)   → JEE Main (S1 & S2) → [qualify] → Advanced (Attempt 2 — FINAL)`}
-        </pre>
-        <h2 className="text-xl font-black">3. Main is not “just a screening test”</h2>
-        <p>
-          Advanced rank is the IIT door. Main rank is the door for NITs, IIITs, and GFTIs — and for a backup if
-          Advanced goes badly. Elite Main colleges (IIIT Hyderabad, NIT Trichy CSE, and similar) often need
-          99.5+ percentile, not a bare qualify.
-        </p>
-        <div className="grid gap-3 text-sm md:grid-cols-2">
-          <div className="rounded-xl border p-4">
-            <h3 className="font-black">Advanced track</h3>
-            <p className="mt-2 text-zinc-600">23 IITs. Also research routes such as IISc / IISERs where those use Advanced.</p>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <section className="relative space-y-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col items-start justify-between gap-4 border-b pb-4 md:flex-row md:items-center">
+            <div className="flex min-w-[320px] items-center gap-3 rounded-xl bg-zinc-950 p-3 text-white">
+              {profile.avatar ? (
+                <img src={profile.avatar} alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-400 text-sm font-black text-white">{getInitials(profile.name)}</div>
+              )}
+              <div>
+                <div className="text-sm font-extrabold">{capitalizeName(profile.name)}</div>
+                <div className="mt-0.5 text-[11px] font-semibold text-zinc-300">{profile.track === "foundation" ? `Foundation · Grade ${profile.grade}` : `JEE Prep · Class ${profile.grade}`}</div>
+              </div>
+              <button
+                type="button"
+                aria-label="Edit student profile"
+                onClick={() => { setProfileDraft(profile); setProfileEditorOpen((open) => !open); }}
+                className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-[11px] text-zinc-300 hover:text-white"
+              >
+                ✎
+              </button>
+            </div>
+            <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700">Open JoSAA Seat Predictor</Link>
           </div>
-          <div className="rounded-xl border p-4">
-            <h3 className="font-black">Main track</h3>
-            <p className="mt-2 text-zinc-600">32 NITs, 26 IIITs, 30+ GFTIs — JoSAA / CSAB on Main rank.</p>
-          </div>
+          {profileEditorOpen && (
+            <div className="space-y-3 rounded-xl border bg-zinc-50 p-4 text-xs">
+              <div className="flex items-center gap-3">
+                {profileDraft.avatar ? (
+                  <img src={profileDraft.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-sm font-black text-indigo-700">{getInitials(profileDraft.name)}</div>
+                )}
+                <div className="flex gap-2">
+                  <label className="cursor-pointer rounded-lg border bg-white px-3 py-1.5 font-bold text-zinc-700">
+                    Upload photo
+                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarUpload(event.target.files?.[0])} />
+                  </label>
+                  {profileDraft.avatar && <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, avatar: undefined }))} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Remove</button>}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="profile-name" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Name</label>
+                <input id="profile-name" type="text" value={profileDraft.name} onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))} className="w-full rounded-lg border p-2 text-sm font-medium" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Track</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, track: "foundation", grade: FOUNDATION_GRADES.includes(current.grade) ? current.grade : FOUNDATION_GRADES[0] }))} className={`rounded-lg border p-2 ${profileDraft.track === "foundation" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>Foundation</button>
+                    <button type="button" onClick={() => setProfileDraft((current) => ({ ...current, track: "jee", grade: JEE_GRADES.includes(current.grade) ? current.grade : JEE_GRADES[0] }))} className={`rounded-lg border p-2 ${profileDraft.track === "jee" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}>JEE</button>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="profile-grade" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Grade</label>
+                  <select id="profile-grade" value={profileDraft.grade} onChange={(event) => setProfileDraft((current) => ({ ...current, grade: event.target.value }))} className="w-full rounded-lg border p-2 text-sm">
+                    {(profileDraft.track === "foundation" ? FOUNDATION_GRADES : JEE_GRADES).map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setProfileEditorOpen(false)} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Cancel</button>
+                <button type="button" onClick={saveProfileFromEditor} className="rounded-lg bg-zinc-900 px-3 py-1.5 font-bold text-white">Save</button>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-4 border-b text-xs font-bold uppercase tracking-wider text-zinc-400"><button type="button" onClick={() => setProfileTab("HEATMAP")} className={`border-b-2 pb-2 ${profileTab === "HEATMAP" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Syllabus Performance Map</button><button type="button" onClick={() => setProfileTab("REPORTS")} className={`border-b-2 pb-2 ${profileTab === "REPORTS" ? "border-zinc-900 text-zinc-900" : "border-transparent"}`}>Activity and Diagnostic Reports</button></div>
+          {profileTab === "HEATMAP" ? <div className="space-y-2">{heatmapChapters.map((item) => { const score = mastery[chapterMasteryKey(item, item.id)] ?? 0; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between text-xs font-bold"><span className="flex items-center gap-2"><SubjectIcon subject={item.subject} className="h-4 w-4 text-zinc-500" />{item.title}</span><span>{score}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className={`h-full ${score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${score}%` }} /></div></div>; })}</div> : <div className="space-y-3 rounded-xl border bg-zinc-50 p-5"><div className="flex justify-between border-b pb-2"><h2 className="text-xs font-bold uppercase tracking-wider">Rolling Sprint Performance Ledger</h2><span className="rounded bg-zinc-900 px-2 py-0.5 font-mono text-[10px] text-white">Live Telemetry Linked</span></div>{attempts.map((item, index) => <div key={`${item.timestamp}-${index}`} className="rounded-xl border bg-white p-3 text-xs"><div className="flex justify-between font-bold"><span>{item.topicTitle}</span><span className="text-emerald-700">{item.score}</span></div><p className="mt-2 text-zinc-500">{item.trackType} | {item.difficulty} | {item.timestamp}</p><p className="mt-2 rounded-lg bg-zinc-50 p-2 italic text-zinc-600">{item.cognitiveAlert}</p></div>)}</div>}
+        </section>
+
+        <div className="grid items-start gap-6 lg:grid-cols-3">
+          <section className="space-y-5 rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-black">Generate Worksheet</h2><div className="space-y-4 text-xs font-bold">
+            <div><label className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Preparation Level</label><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => changeLevel("FOUNDATION")} className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 ${level === "FOUNDATION" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}><Sprout aria-hidden="true" className="h-3.5 w-3.5" />Foundation</button><button type="button" onClick={() => changeLevel("JEE")} className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 ${level === "JEE" ? "bg-zinc-900 text-white" : "text-zinc-600"}`}><GraduationCap aria-hidden="true" className="h-3.5 w-3.5" />JEE Prep</button></div></div>
+            <div><label htmlFor="grade" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Target Grade</label><select id="grade" value={grade} onChange={(event) => changeFilters(event.target.value, subject)} className="w-full rounded-xl border p-2.5 text-sm">{grades.map((item) => <option key={item} value={item}>{level === "FOUNDATION" ? `Grade ${item}` : `Class ${item}`}</option>)}</select></div>
+            <button type="button" onClick={saveCurrentSelectionAsClass} className="w-full rounded-xl border border-dashed p-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800">Save as my class</button>
+            <div><label htmlFor="subject" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Subject</label><div className="flex items-center rounded-xl border bg-white pl-2.5"><SubjectIcon subject={subject} className="h-4 w-4 text-zinc-500" /><select id="subject" value={subject} onChange={(event) => changeFilters(grade, event.target.value as Subject)} className="w-full rounded-xl bg-transparent p-2.5 text-sm outline-none"><option>Mathematics</option><option>Physics</option><option>Chemistry</option>{level === "FOUNDATION" && <option>Biology</option>}</select></div></div>
+            <div><label htmlFor="chapter" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Chapter</label><select id="chapter" value={chapterId} onChange={(event) => { setChapterId(event.target.value); resetAssessment(); }} className="w-full rounded-xl border p-2.5 text-sm">{filteredChapters.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
+            <div><label htmlFor="difficulty" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Difficulty Matrix</label><select id="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="w-full rounded-xl border p-2.5 text-sm"><option>Easy</option><option>Medium</option><option>Hard</option><option>Mixed Matrix</option></select></div>
+            <div><label htmlFor="track" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Assessment Track</label><select id="track" value={track} onChange={(event) => setTrack(event.target.value as ExamTrack)} className="w-full rounded-xl border p-2.5 text-sm"><option value="JEE_MOCK_TEST">Full-Pattern JEE Mock Test</option><option value="CONCEPTUAL_QUIZ">Conceptual Quiz</option><option value="CHAPTER_PRACTICE">Chapter Practice</option></select></div>
+            <button type="button" onClick={generateWorksheet} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"><Rocket aria-hidden="true" className="h-4 w-4" />Generate NTA Worksheet</button>
+          </div></section>
+
+
+          <section className="space-y-4 lg:col-span-2">{worksheetOpen && foundationEmpty ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><h2 className="mt-2 text-2xl font-black">No Foundation items for this chapter yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-zinc-500">This chapter has no questions in its Foundation content shard.</p></div> : worksheetOpen ? <div className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-5 border-b pb-5"><div><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">National Testing Agency | Computer Based Test</p><h1 className="mt-1 text-xl font-black">{selectedChapter?.title ?? "Multi-topic assessment"}</h1><p className="mt-1 text-xs text-zinc-500">Candidate: {capitalizeName(profile.name)} | Paper: {track}</p><p className="mt-1 text-xs text-zinc-500">Time allowed: {formatTime(duration)}</p></div><div className={`no-print flex min-w-[190px] items-center justify-between gap-3 rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2 ${timeLeft <= 300 ? "animate-pulse text-red-600" : timeLeft <= 900 ? "text-red-600" : "text-red-900"}`}><span className="text-[11px] font-bold uppercase tracking-wide">Time Left</span><span className="font-mono text-xl font-bold tabular-nums tracking-widest">{formatTime(timeLeft)}</span></div></div>
+            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase"><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">Answered: {answeredCount}</div><div className="rounded-lg bg-zinc-100 p-2 text-zinc-600">Questions: {totalQuestions}</div><div className="rounded-lg bg-amber-50 p-2 text-amber-700">Remaining: {remainingCount}</div></div>
+            {submitted && isConceptMapPilotChapter && <div className="no-print flex gap-2 border-b text-xs font-bold uppercase tracking-wider"><button type="button" onClick={() => setResultTab("PAPER")} className={`px-3 py-2 border-b-2 ${resultTab === "PAPER" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Paper</button><button type="button" onClick={() => setResultTab("MAP")} className={`px-3 py-2 border-b-2 ${resultTab === "MAP" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Map</button></div>}
+            {isFoundationShardChapter && (!(submitted && isConceptMapPilotChapter) || resultTab === "PAPER") ? foundationQuestions.map((question, index) => <div key={question.id} className="border-b pb-6"><span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>Question {index + 1}: {question.type} | 4 Marks</span><h2 className="mt-3 text-sm font-bold">{question.stem}</h2>{question.type === "MCQ" ? <div className="mt-4 grid gap-3 md:grid-cols-2">{question.options?.map((option, optionIndex) => { const choice = String.fromCharCode(65 + optionIndex); return <label key={choice} className={`cursor-pointer rounded-xl border p-3 text-sm ${foundationAnswers[question.id] === choice ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name={question.id} value={choice} checked={foundationAnswers[question.id] === choice} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mr-2" />{choice}. {option}</label>; })}</div> : <input aria-label={`Numerical answer for question ${index + 1}`} type="text" inputMode="decimal" value={foundationAnswers[question.id] ?? ""} onChange={(event) => setFoundationAnswers((answers) => ({ ...answers, [question.id]: event.target.value }))} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" />}{submitted && <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs"><p className={isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "Correct" : "Incorrect"}</p><p className="mt-1"><strong>Answer:</strong> {question.answer}</p>{question.solution && <p className="mt-1"><strong>Solution:</strong> {question.solution}</p>}{question.formulas?.map((formula) => <div key={formula.id} className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-2"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div>{formula.example && <p className="mt-1 text-blue-700">Example: {formula.example}</p>}</div>)}</div>}</div>) : <><div className="border-b pb-6"><span className="rounded-md bg-rose-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-rose-600">Section A: MCQ | 4 Marks</span><h2 className="mt-3 text-sm font-bold">A projectile has velocity v = 3i + 4j m/s. Taking g = 10 m/s^2, calculate the horizontal range.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{options.map((option) => <label key={option} className={`cursor-pointer rounded-xl border p-3 text-sm ${mcqAnswer === option ? "border-blue-600 bg-blue-50" : "border-zinc-200"}`}><input type="radio" name="mcq" value={option} checked={mcqAnswer === option} onChange={(event) => setMcqAnswer(event.target.value)} disabled={submitted} className="mr-2" />{option}</label>)}</div></div><div className="border-b pb-6"><span className="rounded-md bg-blue-50 px-2 py-1 font-mono text-[10px] font-bold uppercase text-blue-700">Section B: NAT | 4 Marks</span><h2 className="mt-3 text-sm font-bold">Enter the numerical value of the final answer. Use the nearest integer.</h2><p className="mt-2 text-xs text-zinc-500">A circuit has a 10 V source and a 5 ohm resistance. Find the current in amperes.</p><input aria-label="Numerical answer" type="text" inputMode="decimal" value={natAnswer} onChange={(event) => setNatAnswer(event.target.value)} disabled={submitted} className="mt-4 w-full rounded-xl border p-3 font-mono text-sm md:w-1/2" placeholder="Enter numerical answer" /></div></>}
+            {submitted && isFoundationShardChapter && (!isConceptMapPilotChapter || resultTab === "PAPER") && (() => {
+              const mcqQuestions = foundationQuestions.filter((question) => question.type === "MCQ");
+              const natQuestions = foundationQuestions.filter((question) => question.type === "NAT");
+              const isCorrect = (question: FoundationQuestion) => isFoundationAnswerCorrect(question, foundationAnswers[question.id]);
+              const mcqCorrectCount = mcqQuestions.filter(isCorrect).length;
+              const natCorrectCount = natQuestions.filter(isCorrect).length;
+              const conceptGraph = foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined;
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                    <h2 className="font-black text-emerald-800">Evaluation Complete</h2>
+                    <p className="mt-1 text-emerald-700">MCQ: {mcqCorrectCount}/{mcqQuestions.length} correct | NAT: {natCorrectCount}/{natQuestions.length} correct</p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <details>
+                        <summary className="cursor-pointer font-bold">View per-question results</summary>
+                        <div className="mt-2 space-y-1 font-mono">
+                          {foundationQuestions.map((question, index) => (
+                            <p key={question.id}>Q{index + 1} ({question.type}): your answer {foundationAnswers[question.id]?.trim() || "—"} | correct answer {question.answer} | {isCorrect(question) ? "Correct" : "Incorrect"}</p>
+                          ))}
+                        </div>
+                      </details>
+                      {conceptGraph && !isConceptMapPilotChapter && (
+                        <button type="button" onClick={() => setConceptMapOpen((open) => !open)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-bold text-blue-700">
+                          {conceptMapOpen ? "Hide concept map" : "Open concept map"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {conceptGraph && conceptMapOpen && !isConceptMapPilotChapter && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
+                      <h3 className="font-black text-blue-900">{conceptGraph.title}</h3>
+                      <div className="no-print mt-4 rounded-lg bg-white p-3"><MermaidConceptMap chart={buildMermaidFlowchart(conceptGraph)} /></div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {conceptGraph.nodes.filter((node) => node.formulaId).map((node) => {
+                          const formula = foundationQuestions.flatMap((question) => question.formulas ?? []).find((card) => card.id === node.formulaId);
+                          return formula ? <div key={node.id} className="rounded-lg border border-blue-100 bg-white p-3"><p className="font-bold text-blue-800">{formula.name}</p><div className="mt-1 text-blue-900"><MathRenderer formula={formula.latex} /></div></div> : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {submitted && isConceptMapPilotChapter && resultTab === "MAP" && (() => {
+              const conceptGraph = foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined;
+              if (!conceptGraph) return null;
+              const formulas = foundationQuestions.flatMap((question) => question.formulas ?? []);
+              return (
+                <div className="space-y-3">
+                  <h3 className="font-black text-zinc-900">{conceptGraph.title}</h3>
+                  <ConceptMap graph={conceptGraph} formulas={formulas} />
+                </div>
+              );
+            })()}
+            {submitted && !isFoundationShardChapter && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><h2 className="font-black text-emerald-800">Evaluation Complete</h2><p className="mt-1 text-emerald-700">MCQ: {mcqAnswer === answerKey.mcq ? "Correct" : "Incorrect"} | NAT: {natAnswer.trim() === answerKey.nat ? "Correct" : "Incorrect"}</p><details className="mt-3 text-xs"><summary className="cursor-pointer font-bold">View evaluation answer key</summary><p className="mt-2 font-mono">MCQ key: {answerKey.mcq} | NAT key: {answerKey.nat}</p></details></div>}
+            <div className="no-print flex flex-wrap justify-between gap-3"><button type="button" onClick={resetAssessment} className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-600">Return to Filters</button>{isFoundationShardChapter && <button type="button" onClick={downloadFoundationPdf} className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-bold text-blue-700 hover:bg-blue-100"><Download aria-hidden="true" className="h-4 w-4" />Download PDF</button>}{!submitted && <button type="button" onClick={() => submitAssessment()} disabled={answeredCount === 0} className="rounded-xl bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40">Submit Assessment</button>}</div>
+          </div> : <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center shadow-sm"><p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Assessment cockpit standby</p><div className="mt-4 flex justify-center"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm"><SubjectIcon subject={subject} className="h-5 w-5" /></div></div><h2 className="mt-3 text-lg font-black">Ready when you are</h2><p className="mt-1 text-sm text-zinc-500">Pick a chapter and launch a timed paper.</p><div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-bold text-zinc-600"><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? "Foundation" : "JEE Prep"}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{level === "FOUNDATION" ? `Grade ${grade}` : `Class ${grade}`}</span><span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">{subject === "Mathematics" ? "Maths" : subject}</span></div><p className="mt-4 text-xs text-zinc-400">{standbyQuestionCount} questions · {standbyDuration} for a {standbyTrackName}</p></div>}</section>
         </div>
-        <h2 className="text-xl font-black">4. Syllabus gap</h2>
-        <p>
-          Both sit on Class 11–12 CBSE-range physics, chemistry, maths. Main rewards breadth, speed, and direct
-          formula use. Advanced rewards depth and synthesis.
-        </p>
-        <h2 className="text-xl font-black">5. Format</h2>
-        <p>
-          Main: 3 hours, 300 marks, MCQ + numerical. Advanced: two 3-hour papers the same day, variable pattern
-          and penalties. Fatigue in Paper 2 is where many ranks drop.
-        </p>
-        <h2 className="text-xl font-black">6. Error margins</h2>
-        <p>
-          Main punishes small mistakes. Advanced is harder, so a lower percent can still get an IIT seat if
-          subject cut-offs are cleared. Skipping a monster question is strategy.
-        </p>
-        <h2 className="text-xl font-black">Takeaway</h2>
-        <p>
-          Train Main like a sprinter. After Main, switch to Advanced like a marathoner.
-        </p>
-        <div className="flex flex-wrap gap-3 pt-4">
-          <Link href="/" className="rounded-xl border px-4 py-3 text-xs font-bold text-zinc-700">
-            Back to worksheet
-          </Link>
-          <Link href="/predictor" className="rounded-xl bg-blue-600 px-4 py-3 text-xs font-bold text-white">
-            Open JoSAA Seat Predictor
-          </Link>
-        </div>
-      </article>
+        <footer className="no-print flex justify-between border-t pt-4 font-mono text-[10px] uppercase tracking-wider text-zinc-400"><span>NTA Interface Protocol v2.0</span><span>Elapsed session: {formatTime(elapsed)}</span></footer>
+      </div>
+      {worksheetOpen && isFoundationShardChapter && foundationQuestions.length > 0 && (
+        <article id="paper-print" aria-label="Foundation Grade 8 assessment paper">
+          <header>
+            <p>National Testing Agency | Foundation Grade 8</p>
+            <h1>{selectedChapter?.title ?? "Multi-topic assessment"}</h1>
+            <p>Candidate: {capitalizeName(profile.name)} | Paper: {track}</p>
+            <p>Time allowed: {formatTime(duration)}</p>
+          </header>
+          {foundationQuestions.map((question, index) => (
+            <section key={question.id} className="paper-question">
+              <h2>Question {index + 1}: {question.type} | 4 Marks</h2>
+              <p className="paper-stem">{question.stem}</p>
+              {question.type === "MCQ" ? (
+                <ol className="paper-options">
+                  {question.options?.map((option, optionIndex) => (
+                    <li key={`${question.id}-${optionIndex}`}>{String.fromCharCode(65 + optionIndex)}. {option}</li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="paper-nat-box">Numerical answer: ______________________________</div>
+              )}
+              {submitted && (
+                <div className="paper-answer">
+                  <p><strong>Answer:</strong> {question.answer}</p>
+                  {question.solution && <p><strong>Solution:</strong> {question.solution}</p>}
+                </div>
+              )}
+            </section>
+          ))}
+          {submitted && (foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined) && (
+            <section className="paper-map">
+              <h2>Concept Map</h2>
+              <MermaidConceptMap chart={buildMermaidFlowchart(foundationQuestions[0]?.conceptGraph as ConceptGraph)} />
+            </section>
+          )}
+        </article>
+      )}
+      {saveToast && <div role="status" className="no-print fixed bottom-6 right-6 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-lg">Saved to class</div>}
     </main>
   );
 }
