@@ -6,6 +6,16 @@ import { Atom, Calculator, Download, FlaskConical, GraduationCap, Leaf, Rocket, 
 import MathRenderer from "@/components/MathRenderer";
 import MermaidConceptMap from "@/components/MermaidConceptMap";
 import ConceptMap from "@/components/ConceptMap";
+import {
+  GUEST_PROFILE,
+  loadProfiles,
+  saveProfiles,
+  loadActiveId,
+  profileById,
+  newProfileId,
+  resetThisDevice,
+  type DeviceProfile,
+} from "@/lib/deviceProfiles";
 
 type Level = "FOUNDATION" | "JEE";
 type ProfileTab = "HEATMAP" | "REPORTS";
@@ -68,8 +78,7 @@ const PROFILE_STORAGE_KEY = "student-profile";
 const SAVED_PAPERS_STORAGE_KEY = "student-workspace-papers-v1";
 const FOUNDATION_GRADES = ["8", "9", "10"];
 const JEE_GRADES = ["11", "12"];
-const DEFAULT_PROFILE: StudentProfile = { name: "Sharvah", avatar: undefined, track: "foundation", grade: "8" };
-
+const DEFAULT_PROFILE: StudentProfile = { name: "Guest", avatar: undefined, track: "foundation", grade: "8" };
 function trackToLevel(track: ProfileTrack): Level {
   return track === "foundation" ? "FOUNDATION" : "JEE";
 }
@@ -160,7 +169,8 @@ export default function Home() {
   const [profile, setProfile] = useState<StudentProfile>(DEFAULT_PROFILE);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileDraft, setProfileDraft] = useState<StudentProfile>(DEFAULT_PROFILE);
-
+  const [profiles, setProfiles] = useState<DeviceProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState("guest");
   const applyProfileToWorkspace = (nextProfile: StudentProfile) => {
     const nextLevel = trackToLevel(nextProfile.track);
     const firstChapter = SYLLABUS.find((item) => item.level === nextLevel && item.grade === nextProfile.grade);
@@ -171,17 +181,22 @@ export default function Home() {
     setTrack(nextLevel === "FOUNDATION" ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST");
   };
 
-  useEffect(() => {
+   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-      const loaded = raw ? { ...DEFAULT_PROFILE, ...JSON.parse(raw) } : DEFAULT_PROFILE;
-      setProfile(loaded);
-      setProfileDraft(loaded);
-      applyProfileToWorkspace(loaded);
+      const list = loadProfiles();
+      setProfiles(list);
+      const activeId = loadActiveId(list);
+      setActiveProfileId(activeId);
+      const loaded = profileById(list, activeId);
+      const next = { name: loaded.name, avatar: loaded.avatar, track: loaded.track, grade: loaded.grade };
+      setProfile(next);
+      setProfileDraft(next);
+      applyProfileToWorkspace(next);
     } catch {
-      // ignore malformed or inaccessible storage
+      setProfile(DEFAULT_PROFILE);
+      setProfileDraft(DEFAULT_PROFILE);
+      applyProfileToWorkspace(DEFAULT_PROFILE);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const persistProfile = (nextProfile: StudentProfile) => {
@@ -388,6 +403,25 @@ export default function Home() {
               >
                 ✎
               </button>
+                            <select
+                value={activeProfileId}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  setActiveProfileId(id);
+                  window.localStorage.setItem("device-active-profile-id", id);
+                  const loaded = profileById(profiles, id);
+                  const next = { name: loaded.name, avatar: loaded.avatar, track: loaded.track, grade: loaded.grade };
+                  persistProfile(next);
+                  applyProfileToWorkspace(next);
+                  resetAssessment();
+                }}
+                className="ml-2 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-white"
+              >
+                <option value="guest">Guest</option>
+                {profiles.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </select>
             </div>
            <div className="flex flex-wrap gap-2">
   <Link href="/crucible" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-bold text-zinc-800 hover:bg-zinc-50">
@@ -433,9 +467,65 @@ export default function Home() {
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-1">
+                            <div className="flex flex-wrap justify-end gap-2 pt-1">
                 <button type="button" onClick={() => setProfileEditorOpen(false)} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Cancel</button>
                 <button type="button" onClick={saveProfileFromEditor} className="rounded-lg bg-zinc-900 px-3 py-1.5 font-bold text-white">Save</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const created: DeviceProfile = {
+                      id: newProfileId(),
+                      name: profileDraft.name.trim() || "Student",
+                      avatar: profileDraft.avatar,
+                      track: profileDraft.track,
+                      grade: profileDraft.grade,
+                    };
+                    const nextList = [...profiles, created];
+                    setProfiles(nextList);
+                    saveProfiles(nextList);
+                    setActiveProfileId(created.id);
+                    window.localStorage.setItem("device-active-profile-id", created.id);
+                    persistProfile({ name: created.name, avatar: created.avatar, track: created.track, grade: created.grade });
+                    applyProfileToWorkspace(created);
+                    setProfileEditorOpen(false);
+                  }}
+                  className="rounded-lg border px-3 py-1.5 font-bold text-zinc-700"
+                >
+                  Add as new profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.confirm("Remove this profile from this device?")) return;
+                    const nextList = profiles.filter((item) => item.id !== activeProfileId);
+                    setProfiles(nextList);
+                    saveProfiles(nextList);
+                    setActiveProfileId("guest");
+                    window.localStorage.setItem("device-active-profile-id", "guest");
+                    persistProfile(DEFAULT_PROFILE);
+                    applyProfileToWorkspace(DEFAULT_PROFILE);
+                    setProfileEditorOpen(false);
+                  }}
+                  className="rounded-lg border px-3 py-1.5 font-bold text-red-700"
+                >
+                  Remove profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.confirm("Erase all profiles and scores on this device?")) return;
+                    resetThisDevice();
+                    setProfiles([]);
+                    setActiveProfileId("guest");
+                    persistProfile(DEFAULT_PROFILE);
+                    applyProfileToWorkspace(DEFAULT_PROFILE);
+                    setMastery({});
+                    setProfileEditorOpen(false);
+                  }}
+                  className="rounded-lg border px-3 py-1.5 font-bold text-red-800"
+                >
+                  Reset this device
+                </button>
               </div>
             </div>
           )}
