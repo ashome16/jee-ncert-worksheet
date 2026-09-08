@@ -16,7 +16,7 @@ import {
   resetThisDevice,
   type DeviceProfile,
 } from "@/lib/deviceProfiles";
-
+import { recordQuiz, quizCounts, mockUnlocked, MOCK_QUIZ_TARGET, MOCK_PER_SUBJECT } from "@/lib/mockGate";
 type Level = "FOUNDATION" | "JEE";
 type ProfileTab = "HEATMAP" | "REPORTS";
 type Subject = "Mathematics" | "Physics" | "Chemistry" | "Biology";
@@ -319,6 +319,22 @@ export default function Home() {
   const changeLevel = (nextLevel: Level) => { const foundation = nextLevel === "FOUNDATION"; setLevel(nextLevel); setGrade(foundation ? "8" : "12"); setSubject(foundation ? "Mathematics" : "Physics"); setChapterId(foundation ? "g8_mat_01" : "g12_phy_01"); setTrack(foundation ? "CONCEPTUAL_QUIZ" : "JEE_MOCK_TEST"); resetAssessment(); };
   const changeFilters = (nextGrade: string, nextSubject: Subject) => { const firstChapter = SYLLABUS.find((item) => item.level === level && item.grade === nextGrade && item.subject === nextSubject); setGrade(nextGrade); setSubject(nextSubject); setChapterId(firstChapter?.id ?? ""); resetAssessment(); };
   const generateWorksheet = async () => {
+   if (track === "JEE_MOCK_TEST") {
+      if (activeProfileId === "guest") {
+        window.alert("Create a named profile first (pencil → Add as new profile). Then finish 30 quizzes (10 Physics, 10 Chemistry, 10 Maths) before a JEE mock.");
+        setProfileEditorOpen(true);
+        return;
+      }
+      if (!mockUnlocked(activeProfileId)) {
+        const counts = quizCounts(activeProfileId);
+        window.alert(
+          `JEE mock is locked.\n${counts.total}/${MOCK_QUIZ_TARGET} quizzes done.\nPhysics ${Math.min(counts.bySubject.Physics, MOCK_PER_SUBJECT)}/${MOCK_PER_SUBJECT} · Chemistry ${Math.min(counts.bySubject.Chemistry, MOCK_PER_SUBJECT)}/${MOCK_PER_SUBJECT} · Maths ${Math.min(counts.bySubject.Mathematics, MOCK_PER_SUBJECT)}/${MOCK_PER_SUBJECT}`
+        );
+        setTrack("CONCEPTUAL_QUIZ");
+        return;
+      }
+    }
+   
     setFoundationEmpty(false);
     setFoundationQuestions([]);
     setFoundationAnswers({});
@@ -356,6 +372,7 @@ export default function Home() {
       setAttempts((history) => [record, ...history]);
       updateMastery(chapterMasteryKey(selectedChapter, chapterId), record.accuracy);
       setSubmitted(true);
+          recordQuiz(activeProfileId, subject, track);
       return;
     }
     const mcqCorrect = mcqAnswer === answerKey.mcq;
@@ -365,6 +382,7 @@ export default function Home() {
     setAttempts((history) => [record, ...history]);
     updateMastery(chapterMasteryKey(selectedChapter, chapterId), score === 8 ? 100 : 65);
     setSubmitted(true);
+        recordQuiz(activeProfileId, subject, track);
   };
 
   useEffect(() => {
@@ -403,25 +421,6 @@ export default function Home() {
               >
                 ✎
               </button>
-                            <select
-                value={activeProfileId}
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setActiveProfileId(id);
-                  window.localStorage.setItem("device-active-profile-id", id);
-                  const loaded = profileById(profiles, id);
-                  const next = { name: loaded.name, avatar: loaded.avatar, track: loaded.track, grade: loaded.grade };
-                  persistProfile(next);
-                  applyProfileToWorkspace(next);
-                  resetAssessment();
-                }}
-                className="ml-2 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-white"
-              >
-                <option value="guest">Guest</option>
-                {profiles.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
             </div>
            <div className="flex flex-wrap gap-2">
   <Link href="/crucible" className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-bold text-zinc-800 hover:bg-zinc-50">
@@ -467,65 +466,9 @@ export default function Home() {
                   </select>
                 </div>
               </div>
-                            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <div className="flex justify-end gap-2 pt-1">
                 <button type="button" onClick={() => setProfileEditorOpen(false)} className="rounded-lg border px-3 py-1.5 font-bold text-zinc-600">Cancel</button>
                 <button type="button" onClick={saveProfileFromEditor} className="rounded-lg bg-zinc-900 px-3 py-1.5 font-bold text-white">Save</button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const created: DeviceProfile = {
-                      id: newProfileId(),
-                      name: profileDraft.name.trim() || "Student",
-                      avatar: profileDraft.avatar,
-                      track: profileDraft.track,
-                      grade: profileDraft.grade,
-                    };
-                    const nextList = [...profiles, created];
-                    setProfiles(nextList);
-                    saveProfiles(nextList);
-                    setActiveProfileId(created.id);
-                    window.localStorage.setItem("device-active-profile-id", created.id);
-                    persistProfile({ name: created.name, avatar: created.avatar, track: created.track, grade: created.grade });
-                    applyProfileToWorkspace(created);
-                    setProfileEditorOpen(false);
-                  }}
-                  className="rounded-lg border px-3 py-1.5 font-bold text-zinc-700"
-                >
-                  Add as new profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!window.confirm("Remove this profile from this device?")) return;
-                    const nextList = profiles.filter((item) => item.id !== activeProfileId);
-                    setProfiles(nextList);
-                    saveProfiles(nextList);
-                    setActiveProfileId("guest");
-                    window.localStorage.setItem("device-active-profile-id", "guest");
-                    persistProfile(DEFAULT_PROFILE);
-                    applyProfileToWorkspace(DEFAULT_PROFILE);
-                    setProfileEditorOpen(false);
-                  }}
-                  className="rounded-lg border px-3 py-1.5 font-bold text-red-700"
-                >
-                  Remove profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!window.confirm("Erase all profiles and scores on this device?")) return;
-                    resetThisDevice();
-                    setProfiles([]);
-                    setActiveProfileId("guest");
-                    persistProfile(DEFAULT_PROFILE);
-                    applyProfileToWorkspace(DEFAULT_PROFILE);
-                    setMastery({});
-                    setProfileEditorOpen(false);
-                  }}
-                  className="rounded-lg border px-3 py-1.5 font-bold text-red-800"
-                >
-                  Reset this device
-                </button>
               </div>
             </div>
           )}
