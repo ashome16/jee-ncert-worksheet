@@ -1,4 +1,5 @@
 "use client";
+import { applyFallbackForSlug } from "@/lib/apply";
 import { lessonForSlug } from "@/lib/lessons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { Atom, Calculator, Download, FlaskConical, GraduationCap, Leaf, Rocket, 
 import MathRenderer from "@/components/MathRenderer";
 import MermaidConceptMap from "@/components/MermaidConceptMap";
 import ConceptMap from "@/components/ConceptMap";
+import { graphForSlug } from "@/lib/conceptGraphs";
 import {
   GUEST_PROFILE,
   loadProfiles,
@@ -16,6 +18,7 @@ import {
   resetThisDevice,
   type DeviceProfile,
 } from "@/lib/deviceProfiles";
+
 import { recordQuiz, quizCounts, mockUnlocked, MOCK_QUIZ_TARGET, MOCK_PER_SUBJECT } from "@/lib/mockGate";
 type Level = "FOUNDATION" | "JEE";
 type ProfileTab = "HEATMAP" | "REPORTS";
@@ -48,11 +51,21 @@ const SYLLABUS: Chapter[] = [
   { id: "g10_mat_01", slug: "quadratic-equations-and-trigonometry", title: "Quadratic Equations and Trigonometry", grade: "10", subject: "Mathematics", level: "FOUNDATION" },
   { id: "g10_phy_01", slug: "light-reflection-refraction-and-human-eye", title: "Light Reflection, Refraction and Human Eye", grade: "10", subject: "Physics", level: "FOUNDATION" },
   { id: "g11_mat_01", slug: "permutations-combinations-and-probability", title: "Permutations, Combinations and Probability", grade: "11", subject: "Mathematics", level: "JEE" },
-  { id: "g11_phy_01", slug: "units-dimensions-and-rotational-kinematics", title: "Units, Dimensions and Rotational Kinematics", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_01", slug: "units-and-measurements", title: "Unit 1 · Units and Measurements", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_02", slug: "kinematics", title: "Unit 2 · Kinematics", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_03", slug: "laws-of-motion", title: "Unit 3 · Laws of Motion", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_04", slug: "work-energy-and-power", title: "Unit 4 · Work, Energy and Power", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_05", slug: "system-of-particles-and-rotational-motion", title: "Unit 5 · System of Particles and Rotational Motion", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_06", slug: "gravitation", title: "Unit 6 · Gravitation", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_07", slug: "properties-of-solids-and-liquids", title: "Unit 7 · Properties of Solids and Liquids", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_08", slug: "thermodynamics", title: "Unit 8 · Thermodynamics", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_09", slug: "kinetic-theory-of-gases", title: "Unit 9 · Kinetic Theory of Gases", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_10", slug: "oscillations-and-waves", title: "Unit 10 · Oscillations and Waves", grade: "11", subject: "Physics", level: "JEE" },
+  { id: "g11_phy_20", slug: "experimental-skills-class-11", title: "Unit 20 · Experimental Skills (Class 11)", grade: "11", subject: "Physics", level: "JEE" },
   { id: "g12_mat_01", slug: "matrices-determinants-and-vector-calculus", title: "Matrices, Determinants and Vector Calculus", grade: "12", subject: "Mathematics", level: "JEE" },
   { id: "g12_phy_01", slug: "electrostatics-gauss-law-and-field-potentials", title: "Electrostatics, Gauss Law and Field Potentials", grade: "12", subject: "Physics", level: "JEE" },
   { id: "g12_phy_02", slug: "current-electricity-and-advanced-circuit-networks", title: "Current Electricity and Advanced Circuit Networks", grade: "12", subject: "Physics", level: "JEE" },
-];
+
 
 const FOUNDATION_OPTIONS = ["A. x = -8", "B. x = 8", "C. x = -1", "D. x = 2"];
 const JEE_OPTIONS = ["A. 2.4 meters", "B. 4.8 meters", "C. 1.2 meters", "D. 3.6 meters"];
@@ -159,7 +172,7 @@ export default function Home() {
   const [worksheetId, setWorksheetId] = useState<string | null>(null);
   const [saveToast, setSaveToast] = useState(false);
   const [conceptMapOpen, setConceptMapOpen] = useState(false);
-   const [resultTab, setResultTab] = useState<"PAPER" | "MAP" | "LESSON">("PAPER");
+     const [resultTab, setResultTab] = useState<"PAPER" | "MAP" | "LESSON" | "APPLY">("PAPER");
   
   const [duration, setDuration] = useState(180 * 60);
   const [timeLeft, setTimeLeft] = useState(180 * 60);
@@ -373,8 +386,8 @@ export default function Home() {
       setAttempts((history) => [record, ...history]);
       updateMastery(chapterMasteryKey(selectedChapter, chapterId), record.accuracy);
       setSubmitted(true);
-            setSubmitted(true);
-      setResultTab("LESSON");
+
+     setResultTab("PAPER");
       recordQuiz(activeProfileId, subject, track);
       return;
           recordQuiz(activeProfileId, subject, track);
@@ -504,9 +517,12 @@ export default function Home() {
                   <button type="button" onClick={() => setResultTab("MAP")} className={`px-3 py-2 border-b-2 ${resultTab === "MAP" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Map</button>
                 )}
                 <button type="button" onClick={() => setResultTab("LESSON")} className={`px-3 py-2 border-b-2 ${resultTab === "LESSON" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>Lesson</button>
+                              <button type="button" onClick={() => setResultTab("APPLY")} className={`px-3 py-2 border-b-2 ${resultTab === "APPLY" ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>
+                  Apply
+                </button>
               </div>
             )}
-           {isFoundationShardChapter && (!submitted || resultTab === "PAPER" || resultTab === "LESSON") ? (
+          {isFoundationShardChapter && (!submitted || resultTab === "PAPER") ? (
               foundationQuestions.map((question, index) => (
                 <div key={question.id} className="border-b pb-6">
                   <span className={`rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase ${question.type === "MCQ" ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-700"}`}>
@@ -548,7 +564,7 @@ export default function Home() {
               </div>
             ) : null}
 
-{submitted && isFoundationShardChapter && (resultTab === "PAPER" || resultTab === "LESSON") && (() => {
+{submitted && isFoundationShardChapter && resultTab === "PAPER" && (() => {
   const mcqQuestions = foundationQuestions.filter((question) => question.type === "MCQ");
     const natQuestions = foundationQuestions.filter((question) => question.type === "NAT");
   const isCorrect = (question: FoundationQuestion) => isFoundationAnswerCorrect(question, foundationAnswers[question.id]);
@@ -592,14 +608,28 @@ export default function Home() {
               );
             })()}
             {submitted && isConceptMapPilotChapter && resultTab === "MAP" && (() => {
-              const conceptGraph = foundationQuestions[0]?.conceptGraph as ConceptGraph | undefined;
-              if (!conceptGraph) return null;
+           const conceptGraph =
+  (foundationQuestions.find((question) => question.conceptGraph)?.conceptGraph as ConceptGraph | undefined) ??
+  graphForSlug(selectedChapter?.slug);
+            if (!conceptGraph) {
+  return <p className="text-sm text-zinc-500">No concept map in this shard yet. Open Paper or Apply.</p>;
+}
               const formulas = foundationQuestions.flatMap((question) => question.formulas ?? []);
               return (
                 <div className="space-y-3">
                   <h3 className="font-black text-zinc-900">{conceptGraph.title}</h3>
-                  <ConceptMap graph={conceptGraph} formulas={formulas} />
+                                 <ConceptMap graph={conceptGraph} formulas={formulas} />
+                <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">How to read this map</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    <li>Start at the top box. That is the parent idea for the chapter.</li>
+                    <li>Boxes below are kinds or results of that idea (contact vs non-contact force).</li>
+                    <li>Side-by-side boxes are siblings (helpful vs harmful friction).</li>
+                    <li>Blue boxes are a second chain: pressure = force / area, then depth.</li>
+                    <li>Use + / - only to zoom. Then open Apply to see the same ideas in a real scene.</li>
+                  </ul>
                 </div>
+              </div>
               );
             })()}
                         {submitted && isFoundationShardChapter && resultTab === "LESSON" && (() => {
@@ -617,6 +647,26 @@ export default function Home() {
                     <p className="font-bold">Recommended texts</p>
                     <ul className="mt-1 space-y-1">{lesson.books.map((book) => <li key={book.title}><span className="font-semibold">{book.title}.</span> {book.note}</li>)}</ul>
                   </div>
+                </div>
+              );
+            })()}             {submitted && isFoundationShardChapter && resultTab === "APPLY" && (() => {
+              const brief = applyFallbackForSlug(selectedChapter?.slug);
+              if (!brief) return <p className="text-sm text-zinc-500">No field brief for this chapter yet.</p>;
+              return (
+                <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/40 p-5 text-sm">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-amber-800">{brief.setting}</p>
+                  <h3 className="text-lg font-black">{brief.hook}</h3>
+                  <p className="leading-relaxed text-zinc-700">{brief.paragraph}</p>
+                  <ul className="space-y-3">
+                    {brief.applied.map((item) => (
+                      <li key={item.name} className="rounded-lg border bg-white p-3">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">{item.kind}</p>
+                        <p className="font-bold">{item.name}</p>
+                        <p className="mt-1 text-zinc-600">{item.inScene}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs italic text-zinc-500">{brief.linkBack}</p>
                 </div>
               );
             })()}
@@ -653,6 +703,39 @@ export default function Home() {
           <span>Elapsed session: {formatTime(elapsed)}</span>
         </footer>
       </div>
+            {worksheetOpen && isFoundationShardChapter && foundationQuestions.length > 0 && (
+        <article id="paper-print" aria-label="Foundation Grade 8 assessment paper">
+          <header>
+            <p>National Testing Agency | Foundation Grade 8</p>
+            <h1>{selectedChapter?.title ?? "Multi-topic assessment"}</h1>
+            <p>Candidate: {capitalizeName(profile.name)} | Paper: {track}</p>
+            <p>Time allowed: {formatTime(duration)}</p>
+          </header>
+          {foundationQuestions.map((question, index) => (
+            <section key={question.id} className="paper-question">
+              <h2>Question {index + 1}: {question.type} | 4 Marks</h2>
+              <p className="paper-stem">{question.stem}</p>
+              {question.type === "MCQ" ? (
+                <ol className="paper-options">
+                  {question.options?.map((option, optionIndex) => (
+                    <li key={`${question.id}-${optionIndex}`}>{String.fromCharCode(65 + optionIndex)}. {option}</li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="paper-nat-box">Numerical answer: ______________________________</div>
+              )}
+              {submitted && (
+                <div className="paper-answer">
+                  <p><strong>Your answer:</strong> {foundationAnswers[question.id]?.trim() || "—"}</p>
+                  <p><strong>Correct answer:</strong> {question.answer}</p>
+                  <p><strong>Result:</strong> {isFoundationAnswerCorrect(question, foundationAnswers[question.id]) ? "Correct" : "Incorrect"}</p>
+                  {question.solution && <p><strong>Solution:</strong> {question.solution}</p>}
+                </div>
+              )}
+            </section>
+          ))}
+        </article>
+      )}
       {saveToast && (
         <div role="status" className="no-print fixed bottom-6 right-6 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-lg">
           Saved to class
