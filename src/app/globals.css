@@ -11,29 +11,45 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+#paper-print {
+  display: none;
+}
+
 @media print {
   @page {
     margin: 16mm;
   }
 
+  html,
   body {
-    background: white;
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  main > .mx-auto {
-    display: none !important;
+  body * {
+    visibility: hidden;
   }
 
-  .no-print {
-    display: none !important;
+  #paper-print,
+  #paper-print * {
+    visibility: visible;
   }
 
   #paper-print {
     display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
     max-width: none;
     color: #18181b;
     background: white;
     font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .no-print {
+    display: none !important;
   }
 
   #paper-print header {
@@ -60,12 +76,6 @@ body {
     margin-bottom: 18px;
   }
 
-  .paper-question h2 {
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-
   .paper-stem {
     margin-top: 10px;
     font-size: 13px;
@@ -82,39 +92,12 @@ body {
     font-size: 12px;
   }
 
-  .paper-options li {
-    border: 1px solid #e4e4e7;
-    border-radius: 8px;
-    padding: 8px;
-  }
-
-  .paper-nat-box {
-    margin-top: 14px;
+  .paper-nat-box,
+  .paper-answer {
+    margin-top: 12px;
     border: 1px solid #d4d4d8;
     border-radius: 8px;
     padding: 10px;
     font-size: 12px;
-  }
-
-  .paper-answer {
-    margin-top: 10px;
-    background: #f4f4f5;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 11px;
-  }
-
-  .paper-answer p + p {
-    margin-top: 4px;
-  }
-
-  .paper-map {
-    break-before: page;
-  }
-
-  .paper-map h2 {
-    margin-bottom: 12px;
-    font-size: 16px;
-    font-weight: 900;
   }
 }
