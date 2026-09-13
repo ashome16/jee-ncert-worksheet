@@ -1,4 +1,5 @@
 "use client";
+import { JEE_PHY_11_TOPICS } from "@/lib/jeePhysics11";
 import { applyFallbackForSlug } from "@/lib/apply";
 import { lessonForSlug } from "@/lib/lessons";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -160,6 +161,7 @@ export default function Home() {
   const [grade, setGrade] = useState("12");
   const [subject, setSubject] = useState<Subject>("Physics");
   const [chapterId, setChapterId] = useState("g12_phy_01");
+  const [subtopicId, setSubtopicId] = useState("");
   const [difficulty, setDifficulty] = useState("Mixed Matrix");
   const [track, setTrack] = useState<ExamTrack>("JEE_MOCK_TEST");
   const [worksheetOpen, setWorksheetOpen] = useState(false);
@@ -501,6 +503,17 @@ export default function Home() {
             <button type="button" onClick={saveCurrentSelectionAsClass} className="w-full rounded-xl border border-dashed p-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800">Save as my class</button>
             <div><label htmlFor="subject" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Subject</label><div className="flex items-center rounded-xl border bg-white pl-2.5"><SubjectIcon subject={subject} className="h-4 w-4 text-zinc-500" /><select id="subject" value={subject} onChange={(event) => changeFilters(grade, event.target.value as Subject)} className="w-full rounded-xl bg-transparent p-2.5 text-sm outline-none"><option>Mathematics</option><option>Physics</option><option>Chemistry</option>{level === "FOUNDATION" && <option>Biology</option>}</select></div></div>
             <div><label htmlFor="chapter" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select Chapter</label><select id="chapter" value={chapterId} onChange={(event) => { setChapterId(event.target.value); resetAssessment(); }} className="w-full rounded-xl border p-2.5 text-sm">{filteredChapters.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
+                        {level === "JEE" && grade === "11" && subject === "Physics" && (
+              <div>
+                <label htmlFor="subtopic" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Select topic</label>
+                <select id="subtopic" value={subtopicId} onChange={(event) => setSubtopicId(event.target.value)} className="w-full rounded-xl border p-2.5 text-sm">
+                  <option value="">All topics in this unit</option>
+                  {(JEE_PHY_11_TOPICS[selectedChapter?.slug ?? ""] ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div><label htmlFor="difficulty" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Difficulty Matrix</label><select id="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="w-full rounded-xl border p-2.5 text-sm"><option>Easy</option><option>Medium</option><option>Hard</option><option>Mixed Matrix</option></select></div>
             <div><label htmlFor="track" className="mb-1 block font-mono text-[10px] uppercase text-zinc-400">Assessment Track</label><select id="track" value={track} onChange={(event) => setTrack(event.target.value as ExamTrack)} className="w-full rounded-xl border p-2.5 text-sm"><option value="JEE_MOCK_TEST">Full-Pattern JEE Mock Test</option><option value="CONCEPTUAL_QUIZ">Conceptual Quiz</option><option value="CHAPTER_PRACTICE">Chapter Practice</option></select></div>
             <button type="button" onClick={generateWorksheet} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"><Rocket aria-hidden="true" className="h-4 w-4" />Generate NTA Worksheet</button>
